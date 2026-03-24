@@ -6,3 +6,4 @@ client/.env
 server/.env
 client/.next/
 .vscode/
+node_modules/
