@@ -112,3 +112,40 @@ export const getUserTasks = async (
       .json({ message: `Error retrieving user's tasks: ${error.message}` });
   }
 };
+
+// //Changing
+// export const getUserTasks = async (
+//   req: Request,
+//   res: Response
+// ): Promise<void> => {
+//   const { cognitoId } = req.params;
+
+//   try {
+//     // 1. Find user using cognitoId
+//     const user = await prisma.user.findUnique({
+//       where: { cognitoId },
+//     });
+
+//     if (!user) {
+//       res.status(404).json({ message: "User not found" });
+//       return;
+//     }
+
+//     // 2. Get ONLY that user's tasks
+//     const tasks = await prisma.task.findMany({
+//       where: {
+//         assignedUserId: user.userId, // ✅ THIS IS YOUR FIX
+//       },
+//       include: {
+//         author: true,
+//         assignee: true,
+//       },
+//     });
+
+//     res.json(tasks);
+//   } catch (error: any) {
+//     res.status(500).json({
+//       message: `Error retrieving user's tasks: ${error.message}`,
+//     });
+//   }
+// };
