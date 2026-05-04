@@ -130,29 +130,55 @@ const ReusablePriorityPage = ({ priority }: Props) => {
           Table
         </button>
       </div>
-      {isLoading ? (
-        <div>Loading tasks...</div>
-      ) : view === "list" ? (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredTasks?.map((task: Task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      ) : (
-        view === "table" &&
-        filteredTasks && (
-          <div className="z-0 w-full">
-            <DataGrid
-              rows={filteredTasks}
-              columns={columns}
-              checkboxSelection
-              getRowId={(row) => row.id}
-              className={dataGridClassNames}
-              sx={dataGridSxStyles(isDarkMode)}
-            />
-          </div>
-        )
-      )}
+      {/* // {isLoading ? (
+      //   <div>Loading tasks...</div>
+      // ) : view === "list" ? (
+      //   <div className="grid grid-cols-1 gap-4">
+      //     {filteredTasks?.map((task: Task) => (
+      //       <TaskCard key={task.id} task={task} />
+      //     ))}
+      //   </div>
+      // ) : (
+      //   view === "table" &&
+      //   filteredTasks && (
+      //     <div className="z-0 w-full">
+      //       <DataGrid
+      //         rows={filteredTasks}
+      //         columns={columns}
+      //         checkboxSelection
+      //         getRowId={(row) => row.id}
+      //         className={dataGridClassNames}
+      //         sx={dataGridSxStyles(isDarkMode)} */}
+{/* //            />
+//          </div>
+//       )
+//      )} */}
+
+    {isLoading ? (
+  <div>Loading tasks...</div>
+) : filteredTasks?.length === 0 ? (
+  <div className="mt-10 text-center text-gray-500 text-lg">
+    No tasks assigned under {priority} priority
+  </div>
+) : view === "list" ? (
+  <div className="grid grid-cols-1 gap-4">
+    {filteredTasks?.map((task: Task) => (
+      <TaskCard key={task.id} task={task} />
+    ))}
+  </div>
+) : (
+  <div className="z-0 w-full">
+    <DataGrid
+      rows={filteredTasks}
+      columns={columns}
+      checkboxSelection
+      getRowId={(row) => row.id}
+      className={dataGridClassNames}
+      sx={dataGridSxStyles(isDarkMode)}
+    />
+  </div>
+)}
+
     </div>
   );
 };
