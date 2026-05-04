@@ -108,15 +108,15 @@
     "cognitoId": "123e4567-e89b-12d3-a456-426614174018"
   },
   {
-    "username": "UrsulaMonroe",
+    "username": "vedant",
     "teamId": 4,
-    "profilePictureUrl": "p6.jpeg",
-    "cognitoId": "123e4567-e89b-12d3-a456-426614174019"
+    "profilePictureUrl": null,
+    "cognitoId": "c4f86458-b031-7011-7112-582135a7b0b6"
   },
   {
-    "username": "VictorHugo",
+    "username": "Dummy",
     "teamId": 5,
-    "profilePictureUrl": "p7.jpeg",
-    "cognitoId": "123e4567-e89b-12d3-a456-426614174020"
+    "profilePictureUrl": null,
+    "cognitoId": "b408e478-8041-70b6-888f-496fb93fa7eb"
   }
 ]
