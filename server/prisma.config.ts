@@ -9,6 +9,6 @@
 
 export default {
   migrations: {
-    seed: "ts-node prisma/seed.ts",
+    seed: "tsx prisma/seed.ts",
   },
 };
