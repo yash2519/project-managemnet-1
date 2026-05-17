@@ -1,5 +1,5 @@
-import { useGetTasksQuery, useUpdateTaskStatusMutation } from "@/state/api";
-import React from "react";
+import { useGetAuthUserQuery, useGetTasksQuery, useUpdateTaskStatusMutation } from "@/state/api";
+import React, { useState } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Task as TaskType } from "@/state/api";
@@ -10,11 +10,12 @@ import Image from "next/image";
 type BoardProps = {
   id: string;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
+  searchTerm?: string;
 };
 
 const taskStatus = ["To Do", "Work In Progress", "Under Review", "Completed"];
 
-const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
+const BoardView = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: BoardProps) => {
   const {
     data: tasks,
     isLoading,
@@ -29,6 +30,11 @@ const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>An error occurred while fetching tasks</div>;
 
+  const filteredTasks = tasks?.filter((task) =>
+    task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    task.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
@@ -36,7 +42,7 @@ const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
           <TaskColumn
             key={status}
             status={status}
-            tasks={tasks || []}
+            tasks={filteredTasks || []}
             moveTask={moveTask}
             setIsModalNewTaskOpen={setIsModalNewTaskOpen}
           />
@@ -133,6 +139,8 @@ const Task = ({ task }: TaskProps) => {
       isDragging: !!monitor.isDragging(),
     }),
   }));
+
+  const [showAssignees, setShowAssignees] = useState(false);
 
   const taskTagsSplit = task.tags ? task.tags.split(",") : [];
 
@@ -231,6 +239,11 @@ const Task = ({ task }: TaskProps) => {
                 width={30}
                 height={30}
                 className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                onError={(e) => {
+                  if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.assignee?.username}`;
+                  e.currentTarget.srcset = "";
+                }}
               />
             )}
             {task.author && (
@@ -241,9 +254,22 @@ const Task = ({ task }: TaskProps) => {
                 width={30}
                 height={30}
                 className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                onError={(e) => {
+                  if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.author?.username}`;
+                  e.currentTarget.srcset = "";
+                }}
               />
             )}
           </div>
+          
+          <button 
+            onClick={() => setShowAssignees(!showAssignees)} 
+            className="text-xs text-blue-500 hover:underline dark:text-blue-400"
+          >
+            {showAssignees ? "Hide Assignees" : "View Assignees"}
+          </button>
+          
           <div className="flex items-center text-gray-500 dark:text-neutral-500">
             <MessageSquareMore size={20} />
             <span className="ml-1 text-sm dark:text-neutral-400">
@@ -251,6 +277,51 @@ const Task = ({ task }: TaskProps) => {
             </span>
           </div>
         </div>
+        
+        {showAssignees && (
+          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-dark-tertiary dark:bg-dark-tertiary">
+            <h5 className="mb-2 text-xs font-semibold dark:text-white">All Assignees</h5>
+            <div className="flex flex-col gap-2">
+              {task.assignee && (
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.assignee.profilePictureUrl!}`}
+                    alt={task.assignee.username}
+                    width={24}
+                    height={24}
+                    className="h-6 w-6 rounded-full object-cover"
+                    onError={(e) => {
+                      if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.assignee?.username}`;
+                      e.currentTarget.srcset = "";
+                    }}
+                  />
+                  <span className="text-sm dark:text-white">{task.assignee.username} (Primary)</span>
+                </div>
+              )}
+              {task.taskAssignments?.map((ta) => ta.user.userId !== task.assignee?.userId && (
+                <div key={ta.user.userId} className="flex items-center gap-2">
+                  <Image
+                    src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${ta.user.profilePictureUrl!}`}
+                    alt={ta.user.username}
+                    width={24}
+                    height={24}
+                    className="h-6 w-6 rounded-full object-cover"
+                    onError={(e) => {
+                      if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${ta.user.username}`;
+                      e.currentTarget.srcset = "";
+                    }}
+                  />
+                  <span className="text-sm dark:text-white">{ta.user.username}</span>
+                </div>
+              ))}
+              {!task.assignee && (!task.taskAssignments || task.taskAssignments.length === 0) && (
+                <span className="text-sm text-gray-500">No assignees</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useAppSelector } from "@/app/redux";
-import { useGetTasksQuery } from "@/state/api";
+import { useGetAuthUserQuery, useGetTasksQuery } from "@/state/api";
 import { DisplayOption, Gantt, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import React, { useMemo, useState } from "react";
@@ -7,11 +7,12 @@ import React, { useMemo, useState } from "react";
 type Props = {
   id: string;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
+  searchTerm?: string;
 };
 
 type TaskTypeItems = "task" | "milestone" | "project";
 
-const Timeline = ({ id, setIsModalNewTaskOpen }: Props) => {
+const Timeline = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: Props) => {
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
   const {
     data: tasks,
@@ -25,8 +26,16 @@ const Timeline = ({ id, setIsModalNewTaskOpen }: Props) => {
   });
 
   const ganttTasks = useMemo(() => {
+    const filteredTasks = tasks?.filter((task) => {
+      return (
+        task.startDate &&
+        task.dueDate &&
+        (task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          task.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    });
     return (
-      tasks?.map((task) => ({
+      filteredTasks?.map((task) => ({
         start: new Date(task.startDate as string),
         end: new Date(task.dueDate as string),
         name: task.title,
@@ -36,7 +45,7 @@ const Timeline = ({ id, setIsModalNewTaskOpen }: Props) => {
         isDisabled: false,
       })) || []
     );
-  }, [tasks]);
+  }, [tasks, searchTerm]);
 
   const handleViewModeChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -71,14 +80,20 @@ const Timeline = ({ id, setIsModalNewTaskOpen }: Props) => {
 
       <div className="overflow-hidden rounded-md bg-white shadow dark:bg-dark-secondary dark:text-white">
         <div className="timeline">
-          <Gantt
-            tasks={ganttTasks}
-            {...displayOptions}
-            columnWidth={displayOptions.viewMode === ViewMode.Month ? 150 : 100}
-            listCellWidth="100px"
-            barBackgroundColor={isDarkMode ? "#101214" : "#aeb8c2"}
-            barBackgroundSelectedColor={isDarkMode ? "#000" : "#9ba1a6"}
-          />
+          {ganttTasks.length > 0 ? (
+            <Gantt
+              tasks={ganttTasks}
+              {...displayOptions}
+              columnWidth={displayOptions.viewMode === ViewMode.Month ? 150 : 100}
+              listCellWidth="150px"
+              barBackgroundColor={isDarkMode ? "#101214" : "#aeb8c2"}
+              barBackgroundSelectedColor={isDarkMode ? "#000" : "#9ba1a6"}
+            />
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              No tasks available to display in the timeline.
+            </div>
+          )}
         </div>
         <div className="px-4 pb-5 pt-1">
           <button

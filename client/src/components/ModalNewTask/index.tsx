@@ -1,5 +1,5 @@
 import Modal from "@/components/Modal";
-import { Priority, Status, useCreateTaskMutation } from "@/state/api";
+import { Priority, Status, useCreateTaskMutation, useGetAuthUserQuery } from "@/state/api";
 import React, { useState } from "react";
 import { formatISO } from "date-fns";
 
@@ -18,7 +18,8 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
   const [tags, setTags] = useState("");
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [authorUserId, setAuthorUserId] = useState("");
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const authorUserId = (currentUser?.userId || currentUser?.userDetails?.userId)?.toString() || "";
   const [assignedUserId, setAssignedUserId] = useState("");
   const [projectId, setProjectId] = useState("");
 
@@ -47,7 +48,7 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
   };
 
   const isFormValid = () => {
-    return title && authorUserId && !(id !== null || projectId);
+    return title && authorUserId && assignedUserId && (id !== null || projectId);
   };
 
   const selectStyles =
@@ -116,30 +117,34 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
         />
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-2">
-          <input
-            type="date"
-            className={inputStyles}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <input
-            type="date"
-            className={inputStyles}
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Start Date
+            </label>
+            <input
+              type="date"
+              className={inputStyles}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              End Date (Due Date)
+            </label>
+            <input
+              type="date"
+              className={inputStyles}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </div>
         </div>
+
         <input
           type="text"
           className={inputStyles}
-          placeholder="Author User ID"
-          value={authorUserId}
-          onChange={(e) => setAuthorUserId(e.target.value)}
-        />
-        <input
-          type="text"
-          className={inputStyles}
-          placeholder="Assigned User ID"
+          placeholder="Assigned User ID (Required)"
           value={assignedUserId}
           onChange={(e) => setAssignedUserId(e.target.value)}
         />

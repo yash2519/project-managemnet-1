@@ -21,6 +21,8 @@ app.use(morgan("common"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
+import { authMiddleware } from "./middleware/auth";
+app.use(authMiddleware); // protect subsequent routes
 
 /* ROUTES */
 app.get("/", (req, res) => {

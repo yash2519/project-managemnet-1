@@ -1,5 +1,5 @@
 import Modal from "@/components/Modal";
-import { useCreateProjectMutation } from "@/state/api";
+import { useCreateProjectMutation, useGetAuthUserQuery } from "@/state/api";
 import React, { useState } from "react";
 import { formatISO } from "date-fns";
 
@@ -10,6 +10,9 @@ type Props = {
 
 const ModalNewProject = ({ isOpen, onClose }: Props) => {
   const [createProject, { isLoading }] = useCreateProjectMutation();
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const userId = currentUser?.userId || currentUser?.userDetails?.userId || null;
+  
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -30,7 +33,8 @@ const ModalNewProject = ({ isOpen, onClose }: Props) => {
       description,
       startDate: formattedStartDate,
       endDate: formattedEndDate,
-    });
+      authorUserId: userId || undefined,
+    } as any);
   };
 
   const isFormValid = () => {
@@ -63,18 +67,28 @@ const ModalNewProject = ({ isOpen, onClose }: Props) => {
           onChange={(e) => setDescription(e.target.value)}
         />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-2">
-          <input
-            type="date"
-            className={inputStyles}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <input
-            type="date"
-            className={inputStyles}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Start Date
+            </label>
+            <input
+              type="date"
+              className={inputStyles}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              End Date
+            </label>
+            <input
+              type="date"
+              className={inputStyles}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
         <button
           type="submit"

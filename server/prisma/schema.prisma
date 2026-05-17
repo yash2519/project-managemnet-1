@@ -8,6 +8,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
 model User {
   userId            Int              @id @default(autoincrement())
   cognitoId         String           @unique
@@ -19,7 +25,12 @@ model User {
   assignedTasks     Task[]           @relation("TaskAssignee")
   authoredTasks     Task[]           @relation("TaskAuthor")
   taskAssignments   TaskAssignment[]
-  team              Team?            @relation(fields: [teamId], references: [id])
+  Team              Team?            @relation(fields: [teamId], references: [id])
+  teams             UserTeam[]
+  ownedProjects     Project[]        @relation("ProjectOwner")
+  role              Role             @default(MEMBER)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 model Team {
@@ -28,7 +39,22 @@ model Team {
   productOwnerUserId   Int?
   projectManagerUserId Int?
   projectTeams         ProjectTeam[]
-  user                 User[]
+  User                 User[]
+  members              UserTeam[]
+  projects             Project[]
+  scopeOfWork          String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+}
+
+model UserTeam {
+  id      Int   @id @default(autoincrement())
+  userId  Int
+  teamId  Int
+  role    Role @default(MEMBER)
+  user    User @relation(fields: [userId], references: [userId])
+  team    Team @relation(fields: [teamId], references: [id])
+  @@unique([userId, teamId])
 }
 
 model Project {
@@ -39,6 +65,12 @@ model Project {
   endDate      DateTime?
   projectTeams ProjectTeam[]
   tasks        Task[]
+  ownerId      Int
+  teamId       Int?
+  owner        User   @relation("ProjectOwner", fields: [ownerId], references: [userId])
+  team         Team?  @relation(fields: [teamId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model ProjectTeam {
@@ -68,6 +100,8 @@ model Task {
   author          User             @relation("TaskAuthor", fields: [authorUserId], references: [userId])
   project         Project          @relation(fields: [projectId], references: [id])
   taskAssignments TaskAssignment[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model TaskAssignment {

@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import ModalNewTask from "@/components/ModalNewTask";
 import TaskCard from "@/components/TaskCard";
 import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 import {
   Priority,
   Task,
@@ -63,13 +64,13 @@ const columns: GridColDef[] = [
     field: "author",
     headerName: "Author",
     width: 150,
-    renderCell: (params) => params.value.username || "Unknown",
+    renderCell: (params) => params.value?.username || "Unknown",
   },
   {
     field: "assignee",
     headerName: "Assignee",
     width: 150,
-    renderCell: (params) => params.value.username || "Unassigned",
+    renderCell: (params) => params.value?.username || "Unassigned",
   },
 ];
 
@@ -77,8 +78,8 @@ const ReusablePriorityPage = ({ priority }: Props) => {
   const [view, setView] = useState("list");
   const [isModalNewTaskOpen, setIsModalNewTaskOpen] = useState(false);
 
-  const { data: currentUser } = useGetAuthUserQuery({});
-  const userId = currentUser?.userDetails?.userId ?? null;
+  const { data: currentUser, isLoading: isAuthLoading } = useGetAuthUserQuery({});
+  const userId = currentUser?.userId || currentUser?.userDetails?.userId || null;
   const {
     data: tasks,
     isLoading,
@@ -93,7 +94,8 @@ const ReusablePriorityPage = ({ priority }: Props) => {
     (task: Task) => task.priority === priority,
   );
 
-  if (isTasksError || !tasks) return <div>Error fetching tasks</div>;
+  if (isAuthLoading || isLoading) return <div>Loading tasks...</div>;
+  if (isTasksError || (!tasks && userId !== null)) return <div>Error fetching tasks</div>;
 
   return (
     <div className="m-5 p-4">
@@ -130,35 +132,17 @@ const ReusablePriorityPage = ({ priority }: Props) => {
           Table
         </button>
       </div>
-      {/* // {isLoading ? (
-      //   <div>Loading tasks...</div>
-      // ) : view === "list" ? (
-      //   <div className="grid grid-cols-1 gap-4">
-      //     {filteredTasks?.map((task: Task) => (
-      //       <TaskCard key={task.id} task={task} />
-      //     ))}
-      //   </div>
-      // ) : (
-      //   view === "table" &&
-      //   filteredTasks && (
-      //     <div className="z-0 w-full">
-      //       <DataGrid
-      //         rows={filteredTasks}
-      //         columns={columns}
-      //         checkboxSelection
-      //         getRowId={(row) => row.id}
-      //         className={dataGridClassNames}
-      //         sx={dataGridSxStyles(isDarkMode)} */}
-{/* //            />
-//          </div>
-//       )
-//      )} */}
 
     {isLoading ? (
   <div>Loading tasks...</div>
 ) : filteredTasks?.length === 0 ? (
-  <div className="mt-10 text-center text-gray-500 text-lg">
-    No tasks assigned under {priority} priority
+  <div className="mt-8">
+    <EmptyState
+      title={`No tasks assigned`}
+      description={`There are currently no tasks assigned under ${priority} priority.`}
+      ctaLabel="Add Task"
+      onCta={() => setIsModalNewTaskOpen(true)}
+    />
   </div>
 ) : view === "list" ? (
   <div className="grid grid-cols-1 gap-4">
@@ -169,7 +153,7 @@ const ReusablePriorityPage = ({ priority }: Props) => {
 ) : (
   <div className="z-0 w-full">
     <DataGrid
-      rows={filteredTasks}
+      rows={filteredTasks || []}
       columns={columns}
       checkboxSelection
       getRowId={(row) => row.id}

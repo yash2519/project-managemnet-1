@@ -1,13 +1,15 @@
 import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
 import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
-import { useGetTasksQuery } from "@/state/api";
+import { useGetAuthUserQuery, useGetTasksQuery } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import React from "react";
+import EmptyState from "@/components/EmptyState";
 
 type Props = {
   id: string;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
+  searchTerm?: string;
 };
 
 const columns: GridColDef[] = [
@@ -65,8 +67,9 @@ const columns: GridColDef[] = [
   },
 ];
 
-const TableView = ({ id, setIsModalNewTaskOpen }: Props) => {
+const TableView = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: Props) => {
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+
   const {
     data: tasks,
     error,
@@ -75,6 +78,11 @@ const TableView = ({ id, setIsModalNewTaskOpen }: Props) => {
 
   if (isLoading) return <div>Loading...</div>;
   if (error || !tasks) return <div>An error occurred while fetching tasks</div>;
+
+  const filteredTasks = tasks?.filter((task) =>
+    task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    task.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="h-[540px] w-full px-4 pb-8 xl:px-6">
@@ -92,12 +100,23 @@ const TableView = ({ id, setIsModalNewTaskOpen }: Props) => {
           isSmallText
         />
       </div>
-      <DataGrid
-        rows={tasks || []}
-        columns={columns}
-        className={dataGridClassNames}
-        sx={dataGridSxStyles(isDarkMode)}
-      />
+      {filteredTasks && filteredTasks.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            title="No tasks found"
+            description="This project doesn't have any tasks right now. Create a new task to get started!"
+            ctaLabel="Add Task"
+            onCta={() => setIsModalNewTaskOpen(true)}
+          />
+        </div>
+      ) : (
+        <DataGrid
+          rows={filteredTasks || []}
+          columns={columns}
+          className={dataGridClassNames}
+          sx={dataGridSxStyles(isDarkMode)}
+        />
+      )}
     </div>
   );
 };

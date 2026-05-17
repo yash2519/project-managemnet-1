@@ -14,9 +14,10 @@ import ModalNewProject from "./ModalNewProject";
 type Props = {
   activeTab: string;
   setActiveTab: (tabName: string) => void;
+  setSearchTerm?: (term: string) => void;
 };
 
-const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
+const ProjectHeader = ({ activeTab, setActiveTab, setSearchTerm }: Props) => {
   const [isModalNewProjectOpen, setIsModalNewProjectOpen] = useState(false);
 
   return (
@@ -27,13 +28,13 @@ const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
       />
       <div className="pb-6 pt-6 lg:pb-4 lg:pt-8">
         <Header
-          name="Product Design Development"
+          name="Project Dashboard"
           buttonComponent={
             <button
               className="flex items-center rounded-md bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
               onClick={() => setIsModalNewProjectOpen(true)}
             >
-              <PlusSquare className="mr-2 h-5 w-5" /> New Boards
+              <PlusSquare className="mr-2 h-5 w-5" /> New Project
             </button>
           }
         />
@@ -79,6 +80,7 @@ const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
               type="text"
               placeholder="Search Task"
               className="rounded-md border py-1 pl-10 pr-4 focus:outline-none dark:border-dark-secondary dark:bg-dark-secondary dark:text-white"
+              onChange={(e) => setSearchTerm && setSearchTerm(e.target.value)}
             />
             <Grid3x3 className="absolute left-3 top-2 h-4 w-4 text-gray-400 dark:text-neutral-500" />
           </div>

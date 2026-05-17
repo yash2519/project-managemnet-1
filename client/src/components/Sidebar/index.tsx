@@ -31,13 +31,17 @@ const Sidebar = () => {
   const [showProjects, setShowProjects] = useState(true);
   const [showPriority, setShowPriority] = useState(true);
 
-  const { data: projects } = useGetProjectsQuery();
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const userId = currentUser?.userId || currentUser?.userDetails?.userId || null;
+  const { data: projects } = useGetProjectsQuery(
+    { userId: userId || 0 },
+    { skip: userId === null }
+  );
+
   const dispatch = useAppDispatch();
   const isSidebarCollapsed = useAppSelector(
     (state) => state.global.isSidebarCollapsed,
   );
-
-  const { data: currentUser } = useGetAuthUserQuery({});
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -46,7 +50,7 @@ const Sidebar = () => {
     }
   };
   if (!currentUser) return null;
-  const currentUserDetails = currentUser?.userDetails;
+  const currentUserDetails = currentUser?.userDetails || currentUser;
 
   const sidebarClassNames = `fixed flex flex-col h-[100%] justify-between shadow-xl
     transition-all duration-300 h-full z-40 dark:bg-black overflow-y-auto bg-white
@@ -163,23 +167,30 @@ const Sidebar = () => {
         )}
       </div>
       <div className="z-10 mt-32 flex w-full flex-col items-center gap-4 bg-white px-8 py-4 dark:bg-black md:hidden">
-        <div className="flex w-full items-center">
-          <div className="align-center flex h-9 w-9 justify-center">
-            {!!currentUserDetails?.profilePictureUrl ? (
-              <Image
-                src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${currentUserDetails?.profilePictureUrl}`}
-                alt={currentUserDetails?.username || "User Profile Picture"}
-                width={100}
-                height={50}
-                className="h-full rounded-full object-cover"
-              />
-            ) : (
-              <User className="h-6 w-6 cursor-pointer self-center rounded-full dark:text-white" />
-            )}
-          </div>
-          <span className="mx-3 text-gray-800 dark:text-white">
-            {currentUserDetails?.username}
-          </span>
+        <div className="flex w-full items-center justify-between">
+          <Link href="/profile" className="flex items-center cursor-pointer">
+            <div className="align-center flex h-9 w-9 justify-center">
+              {!!currentUserDetails?.profilePictureUrl ? (
+                <Image
+                  src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${currentUserDetails?.profilePictureUrl}`}
+                  alt={currentUserDetails?.username || "User Profile Picture"}
+                  width={100}
+                  height={50}
+                  className="h-full rounded-full object-cover"
+                  onError={(e) => {
+                    if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${currentUserDetails?.username}`;
+                    e.currentTarget.srcset = "";
+                  }}
+                />
+              ) : (
+                <User className="h-6 w-6 self-center rounded-full dark:text-white" />
+              )}
+            </div>
+            <span className="mx-3 text-gray-800 dark:text-white">
+              {currentUserDetails?.username}
+            </span>
+          </Link>
           <button
             className="self-start rounded bg-blue-400 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500 md:block"
             onClick={handleSignOut}
