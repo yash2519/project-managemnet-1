@@ -156,7 +156,7 @@ export const api = createApi({
         url: `projects/${projectId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Projects"],
+      invalidatesTags: ["Projects", "Tasks"],
     }),
     getTasks: build.query<Task[], { projectId: number; userId?: number }>({
       query: ({ projectId, userId }) => `tasks?projectId=${projectId}${userId ? `&userId=${userId}` : ""}`,

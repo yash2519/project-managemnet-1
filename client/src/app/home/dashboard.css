@@ -5,6 +5,7 @@
 
 /* ── Design Tokens (scoped under .dashboard) ── */
 .dashboard {
+  color: var(--color-text-primary);
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
@@ -37,7 +38,7 @@
   --color-orange-light: #FFF7ED;
 }
 
-:global(.dark) .dashboard {
+.dark .dashboard {
   --color-bg: #101214;
   --color-card: #1d1f21;
   --color-border: #2d3135;
@@ -133,11 +134,11 @@
 .db-badge-priority-urgent { background: var(--color-red-light); color: var(--color-red); }
 .db-badge-priority-backlog { background: #F3F4F6; color: #6B7280; }
 
-:global(.dark) .db-badge-status-pending { background: rgba(107,114,128,0.15); color: #9CA3AF; }
-:global(.dark) .db-badge-status-review { color: var(--color-amber); }
-:global(.dark) .db-badge-status-completed { color: var(--color-green); }
-:global(.dark) .db-badge-priority-medium { color: var(--color-amber); }
-:global(.dark) .db-badge-priority-backlog { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+.dark .db-badge-status-pending { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+.dark .db-badge-status-review { color: var(--color-amber); }
+.dark .db-badge-status-completed { color: var(--color-green); }
+.dark .db-badge-priority-medium { color: var(--color-amber); }
+.dark .db-badge-priority-backlog { background: rgba(107,114,128,0.15); color: #9CA3AF; }
 
 /* ── Progress Bar ── */
 .db-progress-track {
@@ -147,7 +148,7 @@
   border-radius: var(--radius-full);
   overflow: hidden;
 }
-:global(.dark) .db-progress-track { background: #2d3135; }
+.dark .db-progress-track { background: #2d3135; }
 .db-progress-fill {
   height: 100%;
   border-radius: var(--radius-full);
@@ -188,7 +189,7 @@
   transition: all 0.15s ease;
 }
 .action-menu-trigger:hover { background: #F3F4F6; color: var(--color-text-primary); }
-:global(.dark) .action-menu-trigger:hover { background: #2d3135; }
+.dark .action-menu-trigger:hover { background: #2d3135; }
 
 .action-menu-dropdown {
   position: absolute;
@@ -218,7 +219,7 @@
   text-align: left;
 }
 .action-menu-item:hover { background: #F3F4F6; }
-:global(.dark) .action-menu-item:hover { background: #2d3135; }
+.dark .action-menu-item:hover { background: #2d3135; }
 .action-menu-item--danger { color: var(--color-red); }
 .action-menu-divider { height: 1px; background: var(--color-border); margin: var(--spacing-xs) 0; }
 
@@ -237,7 +238,7 @@
   gap: 12px;
 }
 .today-task-item:hover { background: #F9FAFB; }
-:global(.dark) .today-task-item:hover { background: rgba(255,255,255,0.04); }
+.dark .today-task-item:hover { background: rgba(255,255,255,0.04); }
 
 .today-task-dot {
   width: 8px;
@@ -250,6 +251,7 @@
 .custom-tooltip {
   background: var(--color-card) !important;
   border: 1px solid var(--color-border) !important;
+  color: var(--color-text-primary) !important;
   border-radius: var(--radius-sm) !important;
   box-shadow: var(--shadow-lg) !important;
   padding: 10px 14px !important;
@@ -290,7 +292,7 @@
   background: #f9fafb;
   border-bottom: 1px solid var(--color-border);
 }
-:global(.dark) .assigned-tasks-table thead tr {
+.dark .assigned-tasks-table thead tr {
   background: rgba(255,255,255,0.03);
 }
 
@@ -315,7 +317,7 @@
 .assigned-tasks-row:hover {
   background: #f9fafb;
 }
-:global(.dark) .assigned-tasks-row:hover {
+.dark .assigned-tasks-row:hover {
   background: rgba(255,255,255,0.03);
 }
 

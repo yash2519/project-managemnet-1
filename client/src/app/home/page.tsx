@@ -139,9 +139,9 @@ const ActionMenu = ({ taskId, onMarkComplete }: { taskId: number; onMarkComplete
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="custom-tooltip">
-      <p style={{ fontWeight: 600, marginBottom: 4 }}>{label || payload[0]?.name}</p>
-      <p style={{ color: payload[0]?.payload?.fill || "#3B82F6" }}>
+    <div className="custom-tooltip text-gray-900 dark:text-gray-100">
+      <p className="font-semibold mb-1">{label || payload[0]?.name}</p>
+      <p style={{ color: payload[0]?.payload?.fill || "#3B82F6" }} className="text-xs">
         {payload[0]?.value} {payload[0]?.value === 1 ? "task" : "tasks"}
       </p>
     </div>
@@ -337,9 +337,19 @@ const HomePage = () => {
                         innerRadius={55} 
                         outerRadius={80} 
                         paddingAngle={4}
-                        label={({ name, percent, x, y, midAngle }: PieLabelRenderProps & { midAngle?: number }) =>
-                          `${name}: ${(Number(percent) * 100).toFixed(0)}%`
-                        }
+                        label={({ name, percent, x, y, cx }: any) => (
+                          <text
+                            x={x}
+                            y={y}
+                            fill={isDarkMode ? "#f3f4f6" : "#111827"}
+                            textAnchor={x > cx ? "start" : "end"}
+                            dominantBaseline="central"
+                            fontSize={11}
+                            fontWeight={500}
+                          >
+                            {`${name}: ${(Number(percent) * 100).toFixed(0)}%`}
+                          </text>
+                        )}
                         labelLine={true}
                       >
                         {taskStatusData.map((entry, index) => (
@@ -367,7 +377,13 @@ const HomePage = () => {
                         Total Tasks
                       </text>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend verticalAlign="bottom" height={28} iconSize={10} wrapperStyle={{ fontSize: '11px', color: chartTextColor, paddingTop: '8px' }} />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={28} 
+                        iconSize={10} 
+                        formatter={(value) => <span className="text-gray-900 dark:text-gray-300 font-medium">{value}</span>}
+                        wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} 
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import { 
-  Users, 
-  PlusSquare, 
-  Layout, 
-  CheckCircle2, 
-  ArrowRight 
+import {
+  Users,
+  PlusSquare,
+  Layout,
+  CheckCircle2,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -45,14 +45,14 @@ const WelcomePage = () => {
 
   return (
     <div className="flex w-full flex-col p-8">
-      <Header name="Welcome to Antigravity" />
+      <Header name="Welcome to TaskMatrix" />
       <p className="mb-10 text-lg text-gray-600 dark:text-gray-400">
         Let&apos;s get you set up with your new project management workspace.
       </p>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, index) => (
-          <div 
+          <div
             key={index}
             className="flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
           >
@@ -67,7 +67,7 @@ const WelcomePage = () => {
                 {step.description}
               </p>
             </div>
-            <Link 
+            <Link
               href={step.link}
               className="flex items-center font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
             >
