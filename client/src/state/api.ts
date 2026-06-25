@@ -110,6 +110,7 @@ export interface Task {
   comments?: Comment[];
   attachments?: Attachment[];
   taskAssignments?: { user: User }[];
+  createdAt?: string;
   updatedAt?: string;
 }
 
