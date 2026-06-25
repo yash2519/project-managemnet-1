@@ -1,6 +1,6 @@
 import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
-import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
+import { dataGridClassNames, dataGridSxStyles, formatDate } from "@/lib/utils";
 import { useGetAuthUserQuery, useGetTasksQuery } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import React from "react";
@@ -28,7 +28,7 @@ const columns: GridColDef[] = [
     headerName: "Status",
     width: 130,
     renderCell: (params) => (
-      <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800">
+      <span className="inline-flex rounded-full bg-green-100 px-2 text-xs font-semibold leading-5 text-green-800 dark:bg-green-900/30 dark:text-green-400">
         {params.value}
       </span>
     ),
@@ -47,23 +47,35 @@ const columns: GridColDef[] = [
     field: "startDate",
     headerName: "Start Date",
     width: 130,
+    renderCell: (params) => formatDate(params.value)
   },
   {
     field: "dueDate",
     headerName: "Due Date",
     width: 130,
+    renderCell: (params) => formatDate(params.value)
   },
   {
     field: "author",
     headerName: "Author",
     width: 150,
-    renderCell: (params) => params.value?.author || "Unknown",
+    renderCell: (params) => params.value?.username || "Unknown",
   },
   {
-    field: "assignee",
-    headerName: "Assignee",
+    field: "assignees",
+    headerName: "Assignees",
     width: 150,
-    renderCell: (params) => params.value?.assignee || "Unassigned",
+    renderCell: (params) => {
+      const assignee = params.row.assignee;
+      const taskAssignments = params.row.taskAssignments || [];
+      const assignees = [
+        ...(assignee ? [assignee] : []),
+        ...taskAssignments.map((ta: any) => ta.user).filter((u: any) => u.userId !== assignee?.userId)
+      ];
+      return assignees.length > 0
+        ? assignees.map((a: any) => a.username).join(", ")
+        : "Unassigned";
+    },
   },
 ];
 

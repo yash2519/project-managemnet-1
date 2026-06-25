@@ -4,7 +4,7 @@ import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
 import ModalNewTask from "@/components/ModalNewTask";
 import TaskCard from "@/components/TaskCard";
-import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
+import { dataGridClassNames, dataGridSxStyles, formatDate } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import {
   Priority,
@@ -14,6 +14,7 @@ import {
 } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import React, { useState } from "react";
+import { List, Table } from "lucide-react";
 
 type Props = {
   priority: Priority;
@@ -54,11 +55,13 @@ const columns: GridColDef[] = [
     field: "startDate",
     headerName: "Start Date",
     width: 130,
+    renderCell: (params) => formatDate(params.value)
   },
   {
     field: "dueDate",
     headerName: "Due Date",
     width: 130,
+    renderCell: (params) => formatDate(params.value)
   },
   {
     field: "author",
@@ -115,22 +118,30 @@ const ReusablePriorityPage = ({ priority }: Props) => {
         }
       />
       <div className="mb-4 flex justify-start">
-        <button
-          className={`px-4 py-2 ${
-            view === "list" ? "bg-gray-300" : "bg-white"
-          } rounded-l`}
-          onClick={() => setView("list")}
-        >
-          List
-        </button>
-        <button
-          className={`px-4 py-2 ${
-            view === "table" ? "bg-gray-300" : "bg-white"
-          } rounded-l`}
-          onClick={() => setView("table")}
-        >
-          Table
-        </button>
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1 shadow-inner dark:border-gray-700 dark:bg-gray-900">
+          <button
+            className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+              view === "list"
+                ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-200 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
+                : "text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            }`}
+            onClick={() => setView("list")}
+          >
+            <List className="h-4 w-4" />
+            List
+          </button>
+          <button
+            className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+              view === "table"
+                ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-200 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
+                : "text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            }`}
+            onClick={() => setView("table")}
+          >
+            <Table className="h-4 w-4" />
+            Table
+          </button>
+        </div>
       </div>
 
     {isLoading ? (

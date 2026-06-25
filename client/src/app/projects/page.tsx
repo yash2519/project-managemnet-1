@@ -5,7 +5,7 @@ import { useGetProjectsQuery, useGetAuthUserQuery } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
-import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
+import { dataGridClassNames, dataGridSxStyles, formatDate } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ModalNewProject from "@/app/projects/ModalNewProject";
@@ -14,8 +14,24 @@ import EmptyState from "@/components/EmptyState";
 const columns: GridColDef[] = [
   { field: "name", headerName: "Project Name", flex: 1, minWidth: 200 },
   { field: "description", headerName: "Description", flex: 2, minWidth: 300 },
-  { field: "startDate", headerName: "Start Date", width: 150 },
-  { field: "endDate", headerName: "End Date", width: 150 },
+  { 
+    field: "ownerUsername", 
+    headerName: "Project Manager", 
+    width: 150,
+    valueGetter: (value, row) => row?.owner?.username || "Unknown"
+  },
+  { 
+    field: "startDate", 
+    headerName: "Start Date", 
+    width: 150,
+    renderCell: (params) => formatDate(params.value)
+  },
+  { 
+    field: "endDate", 
+    headerName: "End Date", 
+    width: 150,
+    renderCell: (params) => formatDate(params.value)
+  },
 ];
 
 const ProjectsPage = () => {

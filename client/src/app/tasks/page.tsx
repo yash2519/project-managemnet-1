@@ -5,7 +5,7 @@ import { useGetTasksByUserQuery, useGetAuthUserQuery } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
-import { dataGridClassNames, dataGridSxStyles } from "@/lib/utils";
+import { dataGridClassNames, dataGridSxStyles, formatDate } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { format, isPast } from "date-fns";
 import EmptyState from "@/components/EmptyState";
@@ -78,7 +78,7 @@ const TasksPage = () => {
         const overdue = isPast(due) && params.row.status !== "Completed";
         return (
           <span className={`text-xs ${overdue ? "font-semibold text-red-500" : "text-gray-700 dark:text-gray-300"}`}>
-            {format(due, "MMM d, yyyy")}
+            {formatDate(params.value)}
           </span>
         );
       },

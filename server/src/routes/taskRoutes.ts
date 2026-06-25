@@ -4,6 +4,7 @@ import {
   getTasks,
   getUserTasks,
   updateTaskStatus,
+  updateTask,
 } from "../controllers/taskController";
 
 const router = Router();
@@ -11,6 +12,7 @@ const router = Router();
 router.get("/", getTasks);
 router.post("/", createTask);
 router.patch("/:taskId/status", updateTaskStatus);
+router.patch("/:taskId", updateTask);
 router.get("/user/:userId", getUserTasks);
 // //changing
 // router.get("/my/:cognitoId", getUserTasks); 

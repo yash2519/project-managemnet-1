@@ -35,17 +35,24 @@ const Timeline = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: Props) => {
       );
     });
     return (
-      filteredTasks?.map((task) => ({
-        start: new Date(task.startDate as string),
-        end: new Date(task.dueDate as string),
-        name: task.title,
-        id: `Task-${task.id}`,
-        type: "task" as TaskTypeItems,
-        progress: task.points ? (task.points / 10) * 100 : 0,
-        isDisabled: false,
-      })) || []
+      filteredTasks?.map((task) => {
+        let start = new Date(task.startDate as string);
+        let end = new Date(task.dueDate as string);
+        if (start.getTime() > end.getTime()) {
+          end = new Date(start.getTime());
+        }
+        return {
+          start,
+          end,
+          name: task.title,
+          id: `Task-${task.id}`,
+          type: "task" as TaskTypeItems,
+          progress: task.points ? (task.points / 10) * 100 : 0,
+          isDisabled: false,
+        };
+      }) || []
     );
-  }, [tasks, searchTerm]);
+  }, [tasks, searchTerm, displayOptions.viewMode]);
 
   const handleViewModeChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -86,8 +93,8 @@ const Timeline = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: Props) => {
               {...displayOptions}
               columnWidth={displayOptions.viewMode === ViewMode.Month ? 150 : 100}
               listCellWidth="150px"
-              barBackgroundColor={isDarkMode ? "#101214" : "#aeb8c2"}
-              barBackgroundSelectedColor={isDarkMode ? "#000" : "#9ba1a6"}
+              barBackgroundColor={isDarkMode ? "#2563eb" : "#aeb8c2"}
+              barBackgroundSelectedColor={isDarkMode ? "#1d4ed8" : "#9ba1a6"}
             />
           ) : (
             <div className="p-8 text-center text-gray-500">

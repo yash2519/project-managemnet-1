@@ -73,15 +73,65 @@ export const postUser = async (req: Request, res: Response): Promise<void> => {
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   const { cognitoId } = req.params;
-  const { username, teamId } = req.body;
+  let { username, roleName } = req.body;
+
+  const validateCustomField = (value: string | undefined): string | undefined => {
+    if (!value) return value;
+    const trimmed = value.trim();
+    if (!trimmed) throw new Error("Role cannot be empty.");
+    const regex = /^[a-zA-Z\s]+$/;
+    if (!regex.test(trimmed)) {
+      throw new Error("Only alphabetic characters and spaces are allowed.");
+    }
+    return trimmed;
+  };
+
   try {
+    roleName = validateCustomField(roleName);
+
     const updatedUser = await prisma.user.update({
       where: { cognitoId },
-      data: { username, teamId },
-      include: { Team: true },
+      data: { username, roleName },
+      include: { teams: true },
     });
     res.json(updatedUser);
   } catch (error: any) {
+    if (error.message === "Only alphabetic characters and spaces are allowed." || error.message === "Role cannot be empty.") {
+      res.status(400).json({ message: error.message });
+      return;
+    }
     res.status(500).json({ message: `Error updating user: ${error.message}` });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// PATCH /users/me/profile-picture
+// Called after a PROFILE_PICTURE upload is confirmed via POST /uploads/confirm
+// ---------------------------------------------------------------------------
+
+export const updateProfilePicture = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthenticated" });
+    return;
+  }
+
+  const { s3Key, publicUrl } = req.body;
+
+  if (!s3Key) {
+    res.status(400).json({ message: "s3Key is required" });
+    return;
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { userId: req.user.userId },
+      data: { profilePictureUrl: s3Key },
+    });
+    res.json(updatedUser);
+  } catch (error: any) {
+    res.status(500).json({ message: `Error updating profile picture: ${error.message}` });
   }
 };

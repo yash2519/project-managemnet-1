@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   createTeam,
   getTeams,
+  getTeamById,
+  updateTeam,
   addTeamMember,
   getTeamMembers,
   removeTeamMember,
@@ -11,9 +13,10 @@ const router = Router();
 
 router.get("/", getTeams);
 router.post("/", createTeam);
+router.get("/:teamId", getTeamById);
+router.patch("/:teamId", updateTeam);
 router.post("/:teamId/members", addTeamMember);
 router.get("/:teamId/members", getTeamMembers);
 router.delete("/:teamId/members/:userId", removeTeamMember);
 
 export default router;
-

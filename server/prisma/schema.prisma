@@ -14,12 +14,21 @@ enum Role {
   MEMBER
 }
 
+enum UploadType {
+  PROFILE_PICTURE
+  TASK_ATTACHMENT
+  PROJECT_DOCUMENT
+  GENERAL
+}
+
 model User {
   userId            Int              @id @default(autoincrement())
   cognitoId         String           @unique
   username          String           @unique
   profilePictureUrl String?
   teamId            Int?
+  teamName          String?
+  roleName          String?
   attachments       Attachment[]
   comments          Comment[]
   assignedTasks     Task[]           @relation("TaskAssignee")
@@ -31,6 +40,8 @@ model User {
   role              Role             @default(MEMBER)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  activities        Activity[]
+  fileUploads       FileUpload[]     @relation("UserFileUploads")
 }
 
 model Team {
@@ -38,6 +49,7 @@ model Team {
   teamName             String
   productOwnerUserId   Int?
   projectManagerUserId Int?
+  teamLeadUserId       Int?
   projectTeams         ProjectTeam[]
   User                 User[]
   members              UserTeam[]
@@ -71,6 +83,7 @@ model Project {
   team         Team?  @relation(fields: [teamId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  activities   Activity[]
 }
 
 model ProjectTeam {
@@ -102,6 +115,7 @@ model Task {
   taskAssignments TaskAssignment[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  activities      Activity[]
 }
 
 model TaskAssignment {
@@ -129,4 +143,34 @@ model Comment {
   userId Int
   task   Task   @relation(fields: [taskId], references: [id])
   user   User   @relation(fields: [userId], references: [userId])
+}
+
+model Activity {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  projectId Int?
+  taskId    Int?
+  action    String   
+  entity    String   
+  details   String?  
+  createdAt DateTime @default(now())
+  
+  user      User?    @relation(fields: [userId], references: [userId])
+  project   Project? @relation(fields: [projectId], references: [id])
+  task      Task?    @relation(fields: [taskId], references: [id])
+}
+
+model FileUpload {
+  id           Int        @id @default(autoincrement())
+  s3Key        String     @unique
+  publicUrl    String
+  fileName     String
+  mimeType     String
+  fileSize     Int?
+  uploadType   UploadType
+  referenceId  Int?
+  uploadedById Int
+  createdAt    DateTime   @default(now())
+
+  uploadedBy   User       @relation("UserFileUploads", fields: [uploadedById], references: [userId])
 }

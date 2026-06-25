@@ -38,7 +38,7 @@ const ModalNewProject = ({ isOpen, onClose }: Props) => {
   };
 
   const isFormValid = () => {
-    return projectName && description && startDate && endDate;
+    return projectName && startDate && endDate;
   };
 
   const inputStyles =

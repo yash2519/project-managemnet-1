@@ -21,6 +21,7 @@ import {
   Tag,
   CalendarRange,
 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 type Props = {
   params: { id: string };
@@ -54,14 +55,7 @@ const Project = ({ params }: Props) => {
     }
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+
 
   return (
     <div>

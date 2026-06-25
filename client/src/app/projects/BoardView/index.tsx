@@ -1,4 +1,5 @@
-import { useGetAuthUserQuery, useGetTasksQuery, useUpdateTaskStatusMutation } from "@/state/api";
+import { useAppSelector } from "@/app/redux";
+import { useGetAuthUserQuery, useGetTasksQuery, useUpdateTaskStatusMutation, useGetProjectByIdQuery } from "@/state/api";
 import React, { useState } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -6,6 +7,7 @@ import { Task as TaskType } from "@/state/api";
 import { EllipsisVertical, MessageSquareMore, Plus } from "lucide-react";
 import { format } from "date-fns";
 import Image from "next/image";
+import { formatDate } from "@/lib/utils";
 
 type BoardProps = {
   id: string;
@@ -75,11 +77,13 @@ const TaskColumn = ({
 
   const tasksCount = tasks.filter((task) => task.status === status).length;
 
+  const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+
   const statusColor: any = {
     "To Do": "#2563EB",
     "Work In Progress": "#059669",
     "Under Review": "#D97706",
-    Completed: "#000000",
+    Completed: isDarkMode ? "#FFFFFF" : "#000000",
   };
 
   return (
@@ -87,7 +91,7 @@ const TaskColumn = ({
       ref={(instance) => {
         drop(instance);
       }}
-      className={`sl:py-4 rounded-lg py-2 xl:px-2 ${isOver ? "bg-blue-100 dark:bg-neutral-950" : ""}`}
+      className={`sl:py-4 rounded-lg py-2 xl:px-2 ${isOver ? "bg-blue-100 dark:bg-neutral-900/50" : ""}`}
     >
       <div className="mb-3 flex w-full">
         <div
@@ -132,23 +136,33 @@ type TaskProps = {
 };
 
 const Task = ({ task }: TaskProps) => {
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const currentUserId = currentUser?.userId ?? null;
+  const { data: project } = useGetProjectByIdQuery(task.projectId);
+
+  const isOwner = project?.ownerId === currentUserId;
+  const isAssigned = task.assignedUserId === currentUserId;
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "task",
     item: { id: task.id },
+    canDrag: () => {
+      return isOwner || isAssigned;
+    },
     collect: (monitor: any) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }));
+  }), [isOwner, isAssigned]);
 
   const [showAssignees, setShowAssignees] = useState(false);
 
   const taskTagsSplit = task.tags ? task.tags.split(",") : [];
 
   const formattedStartDate = task.startDate
-    ? format(new Date(task.startDate), "P")
+    ? formatDate(task.startDate)
     : "";
   const formattedDueDate = task.dueDate
-    ? format(new Date(task.dueDate), "P")
+    ? formatDate(task.dueDate)
     : "";
 
   const numberOfComments = (task.comments && task.comments.length) || 0;
@@ -157,14 +171,14 @@ const Task = ({ task }: TaskProps) => {
     <div
       className={`rounded-full px-2 py-1 text-xs font-semibold ${
         priority === "Urgent"
-          ? "bg-red-200 text-red-700"
+          ? "bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-400"
           : priority === "High"
-            ? "bg-yellow-200 text-yellow-700"
+            ? "bg-yellow-200 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
             : priority === "Medium"
-              ? "bg-green-200 text-green-700"
+              ? "bg-green-200 text-green-700 dark:bg-green-900/30 dark:text-green-400"
               : priority === "Low"
-                ? "bg-blue-200 text-blue-700"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
       }`}
     >
       {priority}
@@ -197,7 +211,7 @@ const Task = ({ task }: TaskProps) => {
               {taskTagsSplit.map((tag) => (
                 <div
                   key={tag}
-                  className="rounded-full bg-blue-100 px-2 py-1 text-xs"
+                  className="rounded-full bg-blue-100 px-2 py-1 text-xs dark:bg-blue-900/30 dark:text-blue-400"
                 >
                   {" "}
                   {tag}
@@ -219,11 +233,11 @@ const Task = ({ task }: TaskProps) => {
           )}
         </div>
 
-        <div className="text-xs text-gray-500 dark:text-neutral-500">
+        <div className="text-xs text-gray-500 dark:text-neutral-400">
           {formattedStartDate && <span>{formattedStartDate} - </span>}
           {formattedDueDate && <span>{formattedDueDate}</span>}
         </div>
-        <p className="text-sm text-gray-600 dark:text-neutral-500">
+        <p className="text-sm text-gray-600 dark:text-neutral-400 mt-2">
           {task.description}
         </p>
         <div className="mt-4 border-t border-gray-200 dark:border-stroke-dark" />

@@ -27,7 +27,7 @@ body,
   @apply border-[#e6e4e4] dark:border-stroke-dark;
 }
 .timeline ._2dZTy {
-  @apply fill-white dark:fill-dark-secondary;
+  @apply fill-white dark:fill-dark-secondary transition-colors duration-200;
 }
 .timeline ._2dZTy:nth-child(even) {
   @apply fill-[#f5f5f5] dark:fill-dark-tertiary;
@@ -36,10 +36,11 @@ body,
   @apply fill-white stroke-[#e6e4e4] dark:fill-dark-secondary dark:stroke-stroke-dark;
 }
 .timeline ._9w8d5 {
-  @apply fill-[#333] dark:fill-white;
+  @apply fill-[#333] dark:fill-white font-medium;
 }
 .timeline ._34SS0 {
-  @apply bg-white dark:bg-dark-secondary;
+  @apply bg-white dark:bg-dark-secondary transition-colors duration-200;
+  padding: 12px 16px;
 }
 .timeline ._34SS0:nth-of-type(even) {
   @apply bg-[#f5f5f5] dark:bg-dark-tertiary;
@@ -59,7 +60,27 @@ body,
   @apply dark:text-neutral-500;
 }
 
+/* Enhancements for Gantt task bars hover */
+.timeline g.taskWrapper {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.timeline g.taskWrapper:hover {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  transform: translateY(-1px);
+}
+
 ::-webkit-scrollbar {
-  width: 0px;
-  height: 0px;
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
 }

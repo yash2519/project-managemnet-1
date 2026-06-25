@@ -96,6 +96,19 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
         teamId: teamId ? Number(teamId) : undefined,
       },
     });
+
+    if (req.user) {
+      await prisma.activity.create({
+        data: {
+          userId: req.user.userId,
+          projectId: project.id,
+          action: "CREATED",
+          entity: "Project",
+          details: `Project created: ${name}`,
+        }
+      });
+    }
+
     res.status(201).json(project);
   } catch (error: any) {
     res.status(500).json({ message: `Error creating project: ${error.message}` });
@@ -127,8 +140,8 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
       data: {
         name: name ?? undefined,
         description: description ?? undefined,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
+        startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+        endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
         teamId: teamId ? Number(teamId) : undefined,
       },
     });
@@ -145,8 +158,9 @@ export const deleteProject = async (req: AuthenticatedRequest, res: Response): P
     return;
   }
   const { projectId } = req.params;
+  const pId = Number(projectId);
   try {
-    const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
+    const project = await prisma.project.findUnique({ where: { id: pId } });
     if (!project) {
       res.status(404).json({ message: "Project not found" });
       return;
@@ -157,8 +171,50 @@ export const deleteProject = async (req: AuthenticatedRequest, res: Response): P
       res.status(403).json({ message: "Forbidden: insufficient permissions" });
       return;
     }
-    await prisma.project.delete({ where: { id: Number(projectId) } });
-    res.json({ message: "Project deleted" });
+
+    // Cascade delete project dependencies inside a transaction
+    await prisma.$transaction(async (tx) => {
+      // Find all tasks related to the project
+      const tasks = await tx.task.findMany({
+        where: { projectId: pId },
+        select: { id: true },
+      });
+      const taskIds = tasks.map((t) => t.id);
+
+      if (taskIds.length > 0) {
+        // Delete all comments belonging to tasks in the project
+        await tx.comment.deleteMany({
+          where: { taskId: { in: taskIds } },
+        });
+
+        // Delete all attachments belonging to tasks in the project
+        await tx.attachment.deleteMany({
+          where: { taskId: { in: taskIds } },
+        });
+
+        // Delete all task assignments belonging to tasks in the project
+        await tx.taskAssignment.deleteMany({
+          where: { taskId: { in: taskIds } },
+        });
+
+        // Delete the tasks themselves
+        await tx.task.deleteMany({
+          where: { projectId: pId },
+        });
+      }
+
+      // Delete all project team assignments
+      await tx.projectTeam.deleteMany({
+        where: { projectId: pId },
+      });
+
+      // Finally delete the project itself
+      await tx.project.delete({
+        where: { id: pId },
+      });
+    });
+
+    res.json({ message: "Project and all associated tasks/data deleted successfully" });
   } catch (error: any) {
     res.status(500).json({ message: `Error deleting project: ${error.message}` });
   }

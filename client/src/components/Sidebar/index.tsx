@@ -53,7 +53,7 @@ const Sidebar = () => {
   const currentUserDetails = currentUser?.userDetails || currentUser;
 
   const sidebarClassNames = `fixed flex flex-col h-[100%] justify-between shadow-xl
-    transition-all duration-300 h-full z-40 dark:bg-black overflow-y-auto bg-white
+    transition-all duration-300 h-full z-40 dark:bg-dark-secondary overflow-y-auto bg-white
     ${isSidebarCollapsed ? "w-0 hidden" : "w-64"}
   `;
 
@@ -61,7 +61,7 @@ const Sidebar = () => {
     <div className={sidebarClassNames}>
       <div className="flex h-[100%] w-full flex-col justify-start">
         {/* TOP LOGO */}
-        <div className="z-50 flex min-h-[56px] w-64 items-center justify-between bg-white px-6 pt-3 dark:bg-black">
+        <div className="z-50 flex min-h-[56px] w-64 items-center justify-between bg-white px-6 pt-3 dark:bg-dark-secondary">
           <div className="text-xl font-bold text-gray-800 dark:text-white">
             Menu
           </div>
@@ -166,7 +166,7 @@ const Sidebar = () => {
           </>
         )}
       </div>
-      <div className="z-10 mt-32 flex w-full flex-col items-center gap-4 bg-white px-8 py-4 dark:bg-black md:hidden">
+      <div className="z-10 mt-32 flex w-full flex-col items-center gap-4 bg-white px-8 py-4 dark:bg-dark-secondary md:hidden">
         <div className="flex w-full items-center justify-between">
           <Link href="/profile" className="flex items-center cursor-pointer">
             <div className="align-center flex h-9 w-9 justify-center">
@@ -217,16 +217,16 @@ const SidebarLink = ({ href, icon: Icon, label }: SidebarLinkProps) => {
   return (
     <Link href={href} className="w-full">
       <div
-        className={`relative flex cursor-pointer items-center gap-3 transition-colors hover:bg-gray-100 dark:bg-black dark:hover:bg-gray-700 ${
-          isActive ? "bg-gray-100 text-white dark:bg-gray-600" : ""
+        className={`relative flex cursor-pointer items-center gap-3 transition-colors duration-200 hover:bg-gray-100 dark:bg-dark-secondary dark:hover:bg-dark-tertiary ${
+          isActive ? "bg-blue-200/20 text-blue-500 dark:bg-blue-primary/10 dark:text-blue-primary" : ""
         } justify-start px-8 py-3`}
       >
         {isActive && (
-          <div className="absolute left-0 top-0 h-[100%] w-[5px] bg-blue-200" />
+          <div className="absolute left-0 top-0 h-[100%] w-[4px] bg-blue-500 dark:bg-blue-primary" />
         )}
 
-        <Icon className="h-6 w-6 text-gray-800 dark:text-gray-100" />
-        <span className={`font-medium text-gray-800 dark:text-gray-100`}>
+        <Icon className={`h-6 w-6 ${isActive ? "text-blue-500 dark:text-blue-primary" : "text-gray-800 dark:text-gray-100"}`} />
+        <span className={`font-medium ${isActive ? "text-blue-500 dark:text-blue-primary" : "text-gray-800 dark:text-gray-100"}`}>
           {label}
         </span>
       </div>

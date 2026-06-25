@@ -14,6 +14,7 @@ export interface Project {
   endDate?: string;
   ownerId?: number;
   owner?: ProjectOwner;
+  tasks?: Task[];
 }
 
 export enum Priority {
@@ -38,7 +39,48 @@ export interface User {
   profilePictureUrl?: string;
   cognitoId?: string;
   roleName?: string;
+  teamName?: string;
   teams?: Team[];
+}
+
+export type UploadTypeKey =
+  | "profile-pictures"
+  | "task-attachments"
+  | "project-documents"
+  | "general";
+
+export interface FileUpload {
+  id: number;
+  s3Key: string;
+  publicUrl: string;
+  fileName: string;
+  mimeType: string;
+  fileSize?: number;
+  uploadType: string;
+  referenceId?: number;
+  uploadedById: number;
+  createdAt: string;
+  uploadedBy?: { userId: number; username: string; profilePictureUrl?: string };
+}
+
+export interface PresignedUrlResult {
+  uploadUrl: string;
+  s3Key: string;
+  publicUrl: string;
+}
+
+export interface Activity {
+  id: number;
+  userId?: number;
+  projectId?: number;
+  taskId?: number;
+  action: string;
+  entity: string;
+  details?: string;
+  createdAt: string;
+  user?: User;
+  project?: Project;
+  task?: Task;
 }
 
 export interface Attachment {
@@ -52,22 +94,34 @@ export interface Attachment {
 export interface Task {
   id: number;
   title: string;
-  description?: string;
+  description?: string | null;
   status?: Status;
   priority?: Priority;
-  tags?: string;
-  startDate?: string;
-  dueDate?: string;
-  points?: number;
+  tags?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  points?: number | null;
   projectId: number;
   authorUserId?: number;
-  assignedUserId?: number;
+  assignedUserId?: number | null;
 
   author?: User;
   assignee?: User;
   comments?: Comment[];
   attachments?: Attachment[];
   taskAssignments?: { user: User }[];
+  updatedAt?: string;
+}
+
+export interface AIBreakdownSubtask {
+  title: string;
+  description: string;
+  points: number;
+  assignedUserId: number;
+  priority?: string;
+  estimatedHours?: number;
+  riskLevel?: string;
+  deadline?: string;
 }
 
 export interface SearchResults {
@@ -76,12 +130,22 @@ export interface SearchResults {
   users?: User[];
 }
 
+export interface TeamMember {
+  userId: number;
+  username: string;
+  profilePictureUrl?: string;
+  roleName?: string;
+  role?: string;
+}
+
 export interface Team {
-  teamId: number;
+  id: number;
   teamName: string;
-  scopeOfWork?: string;
-  productOwnerUserId?: number;
-  projectManagerUserId?: number;
+  teamLeadUserId?: number;
+  adminUsername?: string;
+  memberCount?: number;
+  members?: TeamMember[];
+  projects?: Project[];
 }
 
 export const api = createApi({
@@ -97,7 +161,8 @@ export const api = createApi({
     },
   }),
   reducerPath: "api",
-  tagTypes: ["Projects", "Tasks", "Users", "Teams", "AuthUser"],
+  tagTypes: ["Projects", "Tasks", "Users", "Teams", "AuthUser", "Activities", "FileUploads"],
+
   endpoints: (build) => ({
     getAuthUser: build.query<any, any>({
       queryFn: async (_, _queryApi, _extraOptions, baseQuery) => {
@@ -156,7 +221,7 @@ export const api = createApi({
         url: `projects/${projectId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Projects"],
+      invalidatesTags: ["Projects", "Tasks"],
     }),
     getTasks: build.query<Task[], { projectId: number; userId?: number }>({
       query: ({ projectId, userId }) => `tasks?projectId=${projectId}${userId ? `&userId=${userId}` : ""}`,
@@ -186,11 +251,17 @@ export const api = createApi({
         method: "PATCH",
         body: { status },
       }),
-      invalidatesTags: (result, error, { taskId }) => [
-        { type: "Tasks", id: taskId },
-      ],
+      invalidatesTags: ["Tasks"],
     }),
-    updateUser: build.mutation<User, Partial<User> & { cognitoId: string, teamIds?: number[] }>({
+    updateTask: build.mutation<Task, Partial<Task> & { id: number }>({
+      query: ({ id, ...body }) => ({
+        url: `tasks/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Tasks"],
+    }),
+    updateUser: build.mutation<User, Partial<User> & { cognitoId: string, teamIds?: number[], teamName?: string, roleName?: string }>({
       query: ({ cognitoId, ...body }) => ({
         url: `users/${cognitoId}`,
         method: "PATCH",
@@ -206,7 +277,11 @@ export const api = createApi({
       query: () => "teams",
       providesTags: ["Teams"],
     }),
-    createTeam: build.mutation<Team, Partial<Team>>({
+    getTeamById: build.query<Team, number>({
+      query: (teamId) => `teams/${teamId}`,
+      providesTags: (result, error, teamId) => [{ type: "Teams", id: teamId }],
+    }),
+    createTeam: build.mutation<Team, { teamName: string; teamLeadUserId?: number; memberUserIds?: number[] }>({
       query: (team) => ({
         url: "teams",
         method: "POST",
@@ -214,8 +289,105 @@ export const api = createApi({
       }),
       invalidatesTags: ["Teams"],
     }),
+    updateTeam: build.mutation<Team, { teamId: number; teamName?: string; teamLeadUserId?: number; memberUserIds?: number[] }>({
+      query: ({ teamId, ...body }) => ({
+        url: `teams/${teamId}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Teams", "Users", "AuthUser"],
+    }),
+    addTeamMember: build.mutation<void, { teamId: number; userId: number; role?: string }>({
+      query: ({ teamId, ...body }) => ({
+        url: `teams/${teamId}/members`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Teams", "Users", "AuthUser"],
+    }),
+    removeTeamMember: build.mutation<void, { teamId: number; userId: number }>({
+      query: ({ teamId, userId }) => ({
+        url: `teams/${teamId}/members/${userId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Teams", "Users", "AuthUser"],
+    }),
     search: build.query<SearchResults, { query: string; userId?: number }>({
       query: ({ query, userId }) => `search?query=${query}${userId ? `&userId=${userId}` : ""}`,
+    }),
+    getActivities: build.query<Activity[], void>({
+      query: () => "activities",
+      providesTags: ["Activities"],
+    }),
+
+    // -----------------------------------------------------------------------
+    // Upload endpoints — shared by profile pictures, task attachments, etc.
+    // -----------------------------------------------------------------------
+
+    /** Step 1: Get a presigned S3 PUT URL for any upload type */
+    getPresignedUrl: build.mutation<
+      PresignedUrlResult,
+      {
+        uploadType: UploadTypeKey;
+        referenceId?: number;
+        fileName: string;
+        contentType: string;
+        fileSize?: number;
+      }
+    >({
+      query: (body) => ({
+        url: "uploads/presign",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    /** Step 2: Confirm the upload and persist the record in the DB */
+    confirmUpload: build.mutation<
+      FileUpload,
+      {
+        uploadType: UploadTypeKey;
+        referenceId?: number;
+        s3Key: string;
+        publicUrl: string;
+        fileName: string;
+        mimeType: string;
+        fileSize?: number;
+      }
+    >({
+      query: (body) => ({
+        url: "uploads/confirm",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["FileUploads"],
+    }),
+
+    /** List uploads for a given type and optional resource */
+    getFileUploads: build.query<
+      FileUpload[],
+      { uploadType: UploadTypeKey; referenceId?: number }
+    >({
+      query: ({ uploadType, referenceId }) =>
+        `uploads?uploadType=${uploadType}${referenceId != null ? `&referenceId=${referenceId}` : ""}`,
+      providesTags: ["FileUploads"],
+    }),
+
+    /** Profile-picture-specific: update User.profilePictureUrl after upload confirm */
+    updateProfilePicture: build.mutation<User, { s3Key: string; publicUrl: string }>({
+      query: (body) => ({
+        url: "users/me/profile-picture",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["AuthUser", "Users"],
+    }),
+    generateAIBreakdown: build.mutation<AIBreakdownSubtask[], { title: string; description?: string; projectId: number }>({
+      query: (body) => ({
+        url: "ai/breakdown",
+        method: "POST",
+        body,
+      }),
     }),
   }),
 });
@@ -228,11 +400,22 @@ export const {
   useGetTasksQuery,
   useCreateTaskMutation,
   useUpdateTaskStatusMutation,
+  useUpdateTaskMutation,
   useSearchQuery,
   useGetUsersQuery,
   useGetTeamsQuery,
+  useGetTeamByIdQuery,
   useGetTasksByUserQuery,
   useGetAuthUserQuery,
   useUpdateUserMutation,
   useCreateTeamMutation,
+  useUpdateTeamMutation,
+  useGetActivitiesQuery,
+  useGetPresignedUrlMutation,
+  useConfirmUploadMutation,
+  useGetFileUploadsQuery,
+  useUpdateProfilePictureMutation,
+  useGenerateAIBreakdownMutation,
+  useAddTeamMemberMutation,
+  useRemoveTeamMemberMutation,
 } = api;
