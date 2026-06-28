@@ -1,8 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import * as jwt from 'jsonwebtoken';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// ── Cognito JWT Verifier ──────────────────────────────────────────────────────
+// Validates: signature (via JWKS), issuer, audience/clientId, and expiration.
+// JWKS are fetched on first use and cached automatically by aws-jwt-verify.
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.COGNITO_USER_POOL_ID!,
+  tokenUse: 'access',
+  clientId: process.env.COGNITO_CLIENT_ID!,
+});
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -12,7 +21,11 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   if (req.method === 'OPTIONS') {
     return next();
   }
@@ -24,16 +37,13 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
   }
 
   const token = authHeader.split(' ')[1];
-  try {
-    // In production, you would verify the Cognito/JWT signature here.
-    // For this transformation, we decode the token to identify the user via Cognito ID (sub).
-    const decoded = jwt.decode(token) as any;
-    if (!decoded) {
-      res.status(401).json({ message: 'Invalid token format' });
-      return;
-    }
 
-    const cognitoId = decoded.sub || decoded['cognito:username'];
+  try {
+    // Cryptographically verify the JWT: signature, issuer, clientId, and expiry.
+    // Throws if any validation fails.
+    const payload = await verifier.verify(token);
+
+    const cognitoId = payload.sub || (payload as any)['cognito:username'];
     if (!cognitoId) {
       res.status(401).json({ message: 'Token missing identity claim' });
       return;
@@ -42,26 +52,31 @@ export const authMiddleware = async (req: AuthenticatedRequest, res: Response, n
     // Find user in DB
     let user = await prisma.user.findUnique({
       where: { cognitoId },
-      include: { teams: true }
+      include: { teams: true },
     });
 
     // Auto-onboard if user doesn't exist yet
     if (!user) {
+      const username =
+        (payload as any)['cognito:username'] ||
+        (payload as any).username ||
+        `user_${Math.floor(Math.random() * 10000)}`;
+
       user = await prisma.user.create({
         data: {
           cognitoId,
-          username: decoded['cognito:username'] || decoded.username || `user_${Math.floor(Math.random() * 10000)}`,
+          username,
           role: 'MEMBER',
-          profilePictureUrl: 'i1.jpg'
+          profilePictureUrl: 'i1.jpg',
         },
-        include: { teams: true }
+        include: { teams: true },
       });
     }
 
     req.user = {
       userId: user.userId,
       role: user.role,
-      teamIds: user.teams.map(t => t.teamId)
+      teamIds: user.teams.map((t) => t.teamId),
     };
 
     next();

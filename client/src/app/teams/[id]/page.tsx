@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Crown, Users, FolderOpen, User as UserIcon, Calendar, UserMinus, Plus } from "lucide-react";
 import Image from "next/image";
+import { rolePalette, getRoleStyle } from "@/lib/utils";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Avatar
@@ -48,22 +49,7 @@ const Avatar = ({ url, username, size = "md" }: { url?: string | null; username:
 /* ─────────────────────────────────────────────────────────────────────────────
    Role badge
 ───────────────────────────────────────────────────────────────────────────── */
-const rolePalette: Record<string, { bg: string; text: string }> = {
-  default: { bg: "bg-gray-100 dark:bg-gray-700", text: "text-gray-600 dark:text-gray-300" },
-  admin: { bg: "bg-purple-100 dark:bg-purple-900/40", text: "text-purple-700 dark:text-purple-300" },
-  manager: { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-300" },
-  developer: { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-300" },
-  designer: { bg: "bg-pink-100 dark:bg-pink-900/40", text: "text-pink-700 dark:text-pink-300" },
-  member: { bg: "bg-gray-100 dark:bg-gray-700", text: "text-gray-600 dark:text-gray-300" },
-};
 
-const getRoleStyle = (role: string) => {
-  const key = role.toLowerCase();
-  for (const [k, v] of Object.entries(rolePalette)) {
-    if (k !== "default" && key.includes(k)) return v;
-  }
-  return rolePalette.default;
-};
 
 const RoleBadge = ({ role }: { role?: string | null }) => {
   const label = role?.trim() || "Member";

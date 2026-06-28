@@ -5,9 +5,9 @@ import { useGetTasksByUserQuery, useGetAuthUserQuery } from "@/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useAppSelector } from "@/app/redux";
 import Header from "@/components/Header";
-import { dataGridClassNames, dataGridSxStyles, formatDate } from "@/lib/utils";
+import { dataGridClassNames, dataGridSxStyles, formatDate, getPriorityBadgeClass, getStatusBadgeClass } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import { format, isPast } from "date-fns";
+import { isPast } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 
 const TasksPage = () => {
@@ -20,24 +20,6 @@ const TasksPage = () => {
     skip: userId === null,
   });
 
-  const getPriorityBadgeClass = (priority?: string) => {
-    switch (priority) {
-      case "Urgent": return "db-badge db-badge-priority-urgent";
-      case "High": return "db-badge db-badge-priority-high";
-      case "Medium": return "db-badge db-badge-priority-medium";
-      case "Low": return "db-badge db-badge-priority-low";
-      default: return "db-badge db-badge-priority-backlog";
-    }
-  };
-
-  const getStatusBadgeClass = (status?: string) => {
-    switch (status) {
-      case "Completed": return "db-badge db-badge-status-completed";
-      case "Work In Progress": return "db-badge db-badge-status-in-progress";
-      case "Under Review": return "db-badge db-badge-status-review";
-      default: return "db-badge db-badge-status-pending";
-    }
-  };
 
   const columns: GridColDef[] = [
     { 

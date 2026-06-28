@@ -1,8 +1,8 @@
 import Modal from "@/components/Modal";
-import { Priority, Status, useCreateTaskMutation, useGetAuthUserQuery, useGenerateAIBreakdownMutation, AIBreakdownSubtask } from "@/state/api";
-import React, { useState } from "react";
-import { formatISO } from "date-fns";
+import { Priority, Status } from "@/state/api";
+import React from "react";
 import { Sparkles } from "lucide-react";
+import { useNewTaskForm } from "./useNewTaskForm";
 
 type Props = {
   isOpen: boolean;
@@ -11,117 +11,7 @@ type Props = {
 };
 
 const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
-  const [createTask, { isLoading }] = useCreateTaskMutation();
-  const [generateAIBreakdown, { isLoading: isAILoading }] = useGenerateAIBreakdownMutation();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<Status>(Status.ToDo);
-  const [priority, setPriority] = useState<Priority>(Priority.Backlog);
-  const [tags, setTags] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const { data: currentUser } = useGetAuthUserQuery({});
-  const authorUserId = (currentUser?.userId || currentUser?.userDetails?.userId)?.toString() || "";
-  const [assignedUserId, setAssignedUserId] = useState("");
-  const [projectId, setProjectId] = useState("");
-
-  const [aiSubtasks, setAiSubtasks] = useState<AIBreakdownSubtask[] | null>(null);
-  const [aiError, setAiError] = useState("");
-
-  const handleSubmit = async () => {
-    if (!title || !authorUserId || !(id !== null || projectId)) return;
-
-    const formattedStartDate = startDate ? formatISO(new Date(startDate), {
-      representation: "complete",
-    }) : undefined;
-    const formattedDueDate = dueDate ? formatISO(new Date(dueDate), {
-      representation: "complete",
-    }) : undefined;
-
-    const targetProjectId = id !== null ? Number(id) : Number(projectId);
-
-    if (aiSubtasks && aiSubtasks.length > 0) {
-       // 1. Create the parent task first
-       const parentTask = await createTask({
-            title,
-            description,
-            status: Status.ToDo,
-            priority: Priority.Medium,
-            tags: "AI-Parent",
-            startDate: formattedStartDate,
-            dueDate: formattedDueDate,
-            authorUserId: parseInt(authorUserId),
-            assignedUserId: parseInt(authorUserId), // Assign parent to creator
-            projectId: targetProjectId,
-       }).unwrap();
-
-       // 2. Create the generated subtasks (we can link them to parentTask.id if the schema adds parentTaskId later)
-       for (const subtask of aiSubtasks) {
-          await createTask({
-            title: subtask.title,
-            description: subtask.description,
-            status: Status.ToDo,
-            priority: subtask.priority ? Priority[subtask.priority as keyof typeof Priority] || Priority.Medium : Priority.Medium,
-            tags: "AI-Generated",
-            startDate: formattedStartDate,
-            dueDate: subtask.deadline ? formatISO(new Date(subtask.deadline), { representation: "complete" }) : formattedDueDate,
-            points: subtask.points,
-            authorUserId: parseInt(authorUserId),
-            assignedUserId: subtask.assignedUserId,
-            projectId: targetProjectId,
-          });
-       }
-       onClose();
-       return;
-    }
-
-    // Standard single task creation
-    await createTask({
-      title,
-      description,
-      status,
-      priority,
-      tags,
-      startDate: formattedStartDate,
-      dueDate: formattedDueDate,
-      authorUserId: parseInt(authorUserId),
-      assignedUserId: parseInt(assignedUserId),
-      projectId: targetProjectId,
-    });
-    onClose();
-  };
-
-  const handleAIBreakdown = async () => {
-    setAiError("");
-    const targetProjectId = id !== null ? Number(id) : Number(projectId);
-    
-    if (!title && !targetProjectId) {
-        setAiError("Task title and Project ID are required for AI Breakdown.");
-        return;
-    } else if (!title) {
-        setAiError("Task title is required for AI Breakdown.");
-        return;
-    } else if (!targetProjectId) {
-        setAiError("Project ID is required for AI Breakdown.");
-        return;
-    }
-
-    try {
-        const result = await generateAIBreakdown({
-            title,
-            description,
-            projectId: targetProjectId
-        }).unwrap();
-        setAiSubtasks(result);
-    } catch (err: any) {
-        console.error("Failed to generate AI breakdown", err);
-        setAiError(`Failed to generate AI breakdown: ${err.data?.message || err.message || "Unknown error"}`);
-    }
-  };
-
-  const isFormValid = () => {
-    return title && authorUserId && (id !== null || projectId);
-  };
+  const { state, setters, handlers } = useNewTaskForm(id, onClose);
 
   const selectStyles =
     "mb-4 block w-full rounded border border-gray-300 px-3 py-2 dark:border-dark-tertiary dark:bg-dark-tertiary dark:text-white dark:focus:outline-none";
@@ -135,21 +25,21 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
         className="mt-4 space-y-6"
         onSubmit={(e) => {
           e.preventDefault();
-          handleSubmit();
+          handlers.handleSubmit();
         }}
       >
         <input
           type="text"
           className={inputStyles}
           placeholder="Title (e.g. Build Auth System)"
-          value={title}
-          onChange={(e) => { setTitle(e.target.value); setAiError(""); }}
+          value={state.title}
+          onChange={(e) => { setters.setTitle(e.target.value); setters.setAiError(""); }}
         />
         <textarea
           className={inputStyles}
           placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={state.description}
+          onChange={(e) => setters.setDescription(e.target.value)}
         />
         
         {id === null && (
@@ -157,30 +47,54 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
             type="text"
             className={inputStyles}
             placeholder="ProjectId"
-            value={projectId}
-            onChange={(e) => { setProjectId(e.target.value); setAiError(""); }}
+            value={state.projectId}
+            onChange={(e) => { setters.setProjectId(e.target.value); setters.setAiError(""); }}
           />
         )}
 
         {/* AI Breakdown Section */}
         <div className="flex flex-col items-end gap-2">
-            {aiError && <span className="text-sm text-red-500">{aiError}</span>}
+            <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-500">Min Subtasks</label>
+                    <input 
+                        type="number" 
+                        min="1" 
+                        max="20" 
+                        value={state.minTasks} 
+                        onChange={(e) => setters.setMinTasks(parseInt(e.target.value) || 3)}
+                        className="w-16 rounded border border-gray-300 p-1 text-sm dark:border-dark-tertiary dark:bg-dark-tertiary dark:text-white"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-500">Max Subtasks</label>
+                    <input 
+                        type="number" 
+                        min="1" 
+                        max="20" 
+                        value={state.maxTasks} 
+                        onChange={(e) => setters.setMaxTasks(parseInt(e.target.value) || 7)}
+                        className="w-16 rounded border border-gray-300 p-1 text-sm dark:border-dark-tertiary dark:bg-dark-tertiary dark:text-white"
+                    />
+                </div>
+            </div>
+            {state.aiError && <span className="text-sm text-red-500">{state.aiError}</span>}
             <button
                 type="button"
-                onClick={handleAIBreakdown}
-                disabled={isAILoading}
+                onClick={handlers.handleAIBreakdown}
+                disabled={state.isAILoading}
                 className="flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
             >
                 <Sparkles size={16} />
-                {isAILoading ? "AI is thinking..." : "AI Breakdown"}
+                {state.isAILoading ? "AI is thinking..." : "AI Breakdown"}
             </button>
         </div>
 
-        {aiSubtasks && aiSubtasks.length > 0 ? (
+        {state.aiSubtasks && state.aiSubtasks.length > 0 ? (
             <div className="rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-dark-secondary">
                 <h4 className="mb-2 font-semibold text-gray-800 dark:text-gray-200">AI Generated Subtasks:</h4>
                 <div className="max-h-60 space-y-3 overflow-y-auto pr-2">
-                    {aiSubtasks.map((task, idx) => (
+                    {state.aiSubtasks.map((task, idx) => (
                         <div key={idx} className="rounded bg-white p-3 shadow-sm dark:bg-dark-tertiary">
                             <div className="flex items-center justify-between">
                                 <span className="font-medium text-gray-900 dark:text-white">{task.title}</span>
@@ -196,7 +110,7 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                 <button
                     type="button"
                     className="mt-4 text-sm text-red-500 hover:underline"
-                    onClick={() => setAiSubtasks(null)}
+                    onClick={() => setters.setAiSubtasks(null)}
                 >
                     Discard AI Suggestions
                 </button>
@@ -207,9 +121,9 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-2">
                 <select
                     className={selectStyles}
-                    value={status}
+                    value={state.status}
                     onChange={(e) =>
-                    setStatus(Status[e.target.value as keyof typeof Status])
+                    setters.setStatus(Status[e.target.value as keyof typeof Status])
                     }
                 >
                     <option value="">Select Status</option>
@@ -220,9 +134,9 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                 </select>
                 <select
                     className={selectStyles}
-                    value={priority}
+                    value={state.priority}
                     onChange={(e) =>
-                    setPriority(Priority[e.target.value as keyof typeof Priority])
+                    setters.setPriority(Priority[e.target.value as keyof typeof Priority])
                     }
                 >
                     <option value="">Select Priority</option>
@@ -237,8 +151,8 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                 type="text"
                 className={inputStyles}
                 placeholder="Tags (comma separated)"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
+                value={state.tags}
+                onChange={(e) => setters.setTags(e.target.value)}
                 />
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-2">
@@ -249,8 +163,8 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                     <input
                     type="date"
                     className={inputStyles}
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    value={state.startDate}
+                    onChange={(e) => setters.setStartDate(e.target.value)}
                     />
                 </div>
                 <div>
@@ -260,8 +174,8 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                     <input
                     type="date"
                     className={inputStyles}
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
+                    value={state.dueDate}
+                    onChange={(e) => setters.setDueDate(e.target.value)}
                     />
                 </div>
                 </div>
@@ -270,8 +184,8 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
                 type="text"
                 className={inputStyles}
                 placeholder="Assigned User ID"
-                value={assignedUserId}
-                onChange={(e) => setAssignedUserId(e.target.value)}
+                value={state.assignedUserId}
+                onChange={(e) => setters.setAssignedUserId(e.target.value)}
                 />
             </>
         )}
@@ -279,11 +193,11 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
         <button
           type="submit"
           className={`focus-offset-2 mt-4 flex w-full justify-center rounded-md border border-transparent bg-blue-primary px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-            !isFormValid() || isLoading || isAILoading ? "cursor-not-allowed opacity-50" : ""
+            !handlers.isFormValid() || state.isLoading || state.isAILoading ? "cursor-not-allowed opacity-50" : ""
           }`}
-          disabled={!isFormValid() || isLoading || isAILoading}
+          disabled={!handlers.isFormValid() || state.isLoading || state.isAILoading}
         >
-          {isLoading ? "Saving..." : (aiSubtasks ? "Approve & Create All Subtasks" : "Create Task")}
+          {state.isLoading ? "Saving..." : (state.aiSubtasks ? "Approve & Create All Subtasks" : "Create Task")}
         </button>
       </form>
     </Modal>

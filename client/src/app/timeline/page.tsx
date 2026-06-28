@@ -167,7 +167,7 @@ const Timeline = () => {
         };
       }) || []
     );
-  }, [projects, displayOptions.viewMode]);
+  }, [projects]);
 
   const stats = useMemo(() => {
     if (!projects) return { total: 0, active: 0, completed: 0, delayed: 0 };

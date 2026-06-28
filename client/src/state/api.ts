@@ -1,153 +1,88 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser, fetchUserAttributes } from "aws-amplify/auth";
 
-export interface ProjectOwner {
-  userId: number;
-  username: string;
+import type {
+  ProjectOwner,
+  Project,
+  User,
+  FileUpload,
+  PresignedUrlResult,
+  Activity,
+  Attachment,
+  Task,
+  AIBreakdownSubtask,
+  SearchResults,
+  TeamMember,
+  Team,
+  UploadTypeKey,
+  ProjectHealthResponseDTO,
+  TaskDependency,
+  DependencyPredictionResponseDTO,
+  DependencyGraphResponseDTO,
+  AffectedTasksResponseDTO,
+  ActivityTimelineResponseDTO,
+  DailyTimelineResponseDTO,
+  StandupAnalysisResult,
+  TeamWorkloadResult,
+  AIStandupResponse,
+  AnalysisFilters,
+  StandupHistoryItem,
+  StandupHistoryResponse,
+  StandupCompareResponse,
+} from "@/types";
+import { Priority, Status } from "@/types";
+
+// Re-export all shared types so existing imports from "@/state/api" continue to work.
+export type {
+  ProjectOwner,
+  Project,
+  User,
+  FileUpload,
+  PresignedUrlResult,
+  Activity,
+  Attachment,
+  Task,
+  AIBreakdownSubtask,
+  SearchResults,
+  TeamMember,
+  Team,
+  UploadTypeKey,
+  ProjectHealthResponseDTO,
+  TaskDependency,
+  DependencyPredictionResponseDTO,
+  DependencyGraphResponseDTO,
+  AffectedTasksResponseDTO,
+  ActivityTimelineResponseDTO,
+  DailyTimelineResponseDTO,
+  StandupAnalysisResult,
+  TeamWorkloadResult,
+  AIStandupResponse,
+  StandupHistoryItem,
+  StandupHistoryResponse,
+  StandupCompareResponse,
+} from "@/types";
+export { Priority, Status, DependencyType, DependencyStatus } from "@/types";
+
+/**
+ * Helper to generate cache tags for a list of items.
+ * If the list exists, maps each item to an { type, id } tag.
+ * If the list is undefined (e.g. empty/error), falls back to { type } or { type, id: fallbackId }.
+ */
+function providesList<R extends { id: string | number }[], T extends string>(
+  resultsWithIds: R | undefined,
+  tagType: T,
+  fallbackId?: string | number
+) {
+  if (resultsWithIds && resultsWithIds.length > 0) {
+    return resultsWithIds.map(({ id }) => ({ type: tagType, id } as const));
+  }
+  return fallbackId !== undefined
+    ? [{ type: tagType, id: fallbackId } as const]
+    : [{ type: tagType } as const];
 }
 
-export interface Project {
-  id: number;
-  name: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  ownerId?: number;
-  owner?: ProjectOwner;
-  tasks?: Task[];
-}
-
-export enum Priority {
-  Urgent = "Urgent",
-  High = "High",
-  Medium = "Medium",
-  Low = "Low",
-  Backlog = "Backlog",
-}
-
-export enum Status {
-  ToDo = "To Do",
-  WorkInProgress = "Work In Progress",
-  UnderReview = "Under Review",
-  Completed = "Completed",
-}
-
-export interface User {
-  userId?: number;
-  username: string;
-  email: string;
-  profilePictureUrl?: string;
-  cognitoId?: string;
-  roleName?: string;
-  teamName?: string;
-  teams?: Team[];
-}
-
-export type UploadTypeKey =
-  | "profile-pictures"
-  | "task-attachments"
-  | "project-documents"
-  | "general";
-
-export interface FileUpload {
-  id: number;
-  s3Key: string;
-  publicUrl: string;
-  fileName: string;
-  mimeType: string;
-  fileSize?: number;
-  uploadType: string;
-  referenceId?: number;
-  uploadedById: number;
-  createdAt: string;
-  uploadedBy?: { userId: number; username: string; profilePictureUrl?: string };
-}
-
-export interface PresignedUrlResult {
-  uploadUrl: string;
-  s3Key: string;
-  publicUrl: string;
-}
-
-export interface Activity {
-  id: number;
-  userId?: number;
-  projectId?: number;
-  taskId?: number;
-  action: string;
-  entity: string;
-  details?: string;
-  createdAt: string;
-  user?: User;
-  project?: Project;
-  task?: Task;
-}
-
-export interface Attachment {
-  id: number;
-  fileURL: string;
-  fileName: string;
-  taskId: number;
-  uploadedById: number;
-}
-
-export interface Task {
-  id: number;
-  title: string;
-  description?: string | null;
-  status?: Status;
-  priority?: Priority;
-  tags?: string | null;
-  startDate?: string | null;
-  dueDate?: string | null;
-  points?: number | null;
-  projectId: number;
-  authorUserId?: number;
-  assignedUserId?: number | null;
-
-  author?: User;
-  assignee?: User;
-  comments?: Comment[];
-  attachments?: Attachment[];
-  taskAssignments?: { user: User }[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface AIBreakdownSubtask {
-  title: string;
-  description: string;
-  points: number;
-  assignedUserId: number;
-  priority?: string;
-  estimatedHours?: number;
-  riskLevel?: string;
-  deadline?: string;
-}
-
-export interface SearchResults {
-  tasks?: Task[];
-  projects?: Project[];
-  users?: User[];
-}
-
-export interface TeamMember {
-  userId: number;
-  username: string;
-  profilePictureUrl?: string;
-  roleName?: string;
-  role?: string;
-}
-
-export interface Team {
-  id: number;
-  teamName: string;
-  teamLeadUserId?: number;
-  adminUsername?: string;
-  memberCount?: number;
-  members?: TeamMember[];
-  projects?: Project[];
-}
+const TEAM_MUTATION_TAGS = ["Teams", "Users", "AuthUser"] as const;
+const TASK_MUTATION_TAGS = ["Tasks"] as const;
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
@@ -209,6 +144,21 @@ export const api = createApi({
       query: (projectId) => `projects/${projectId}`,
       providesTags: (result, error, projectId) => [{ type: "Projects", id: projectId }],
     }),
+    getProjectHealth: build.query<ProjectHealthResponseDTO, number>({
+      query: (projectId) => `projects/${projectId}/health`,
+      providesTags: (result, error, projectId) => [{ type: "Projects", id: projectId }],
+    }),
+    getProjectDependenciesPrediction: build.query<DependencyPredictionResponseDTO, number>({
+      query: (projectId) => `projects/${projectId}/dependencies`,
+      providesTags: (result, error, projectId) => [{ type: "Projects", id: projectId }],
+    }),
+    getProjectDependencyGraph: build.query<DependencyGraphResponseDTO, number>({
+      query: (projectId) => `projects/${projectId}/dependencies/graph`,
+      providesTags: (result, error, projectId) => [{ type: "Projects", id: projectId }],
+    }),
+    getAffectedDownstreamTasks: build.query<AffectedTasksResponseDTO, { projectId: number, taskId: number }>({
+      query: ({ projectId, taskId }) => `projects/${projectId}/dependencies/affected/${taskId}`,
+    }),
     createProject: build.mutation<Project, Partial<Project>>({
       query: (project) => ({
         url: "projects",
@@ -226,17 +176,11 @@ export const api = createApi({
     }),
     getTasks: build.query<Task[], { projectId: number; userId?: number }>({
       query: ({ projectId, userId }) => `tasks?projectId=${projectId}${userId ? `&userId=${userId}` : ""}`,
-      providesTags: (result) =>
-        result
-          ? result.map(({ id }) => ({ type: "Tasks" as const, id }))
-          : [{ type: "Tasks" as const }],
+      providesTags: (result) => providesList(result, "Tasks"),
     }),
     getTasksByUser: build.query<Task[], number>({
       query: (userId) => `tasks/user/${userId}`,
-      providesTags: (result, error, userId) =>
-        result
-          ? result.map(({ id }) => ({ type: "Tasks", id }))
-          : [{ type: "Tasks", id: userId }],
+      providesTags: (result, error, userId) => providesList(result, "Tasks", userId),
     }),
     createTask: build.mutation<Task, Partial<Task>>({
       query: (task) => ({
@@ -244,7 +188,7 @@ export const api = createApi({
         method: "POST",
         body: task,
       }),
-      invalidatesTags: ["Tasks"],
+      invalidatesTags: TASK_MUTATION_TAGS,
     }),
     updateTaskStatus: build.mutation<Task, { taskId: number; status: string }>({
       query: ({ taskId, status }) => ({
@@ -252,7 +196,7 @@ export const api = createApi({
         method: "PATCH",
         body: { status },
       }),
-      invalidatesTags: ["Tasks"],
+      invalidatesTags: TASK_MUTATION_TAGS,
     }),
     updateTask: build.mutation<Task, Partial<Task> & { id: number }>({
       query: ({ id, ...body }) => ({
@@ -260,7 +204,38 @@ export const api = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: ["Tasks"],
+      invalidatesTags: TASK_MUTATION_TAGS,
+    }),
+    getTaskDependencies: build.query<{ predecessors: TaskDependency[], successors: TaskDependency[] }, { projectId: number, taskId: number }>({
+      query: ({ projectId, taskId }) => `projects/${projectId}/dependencies/tasks/${taskId}`,
+      providesTags: (result, error, { taskId }) => [{ type: "Tasks", id: taskId }],
+    }),
+    addTaskDependency: build.mutation<TaskDependency, { projectId: number, taskId: number, type: string, predecessorId?: number, successorId?: number, note?: string }>({
+      query: ({ projectId, taskId, ...body }) => ({
+        url: `projects/${projectId}/dependencies/tasks/${taskId}`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result, error, { taskId, predecessorId, successorId }) => [
+        { type: "Tasks", id: taskId },
+        { type: "Tasks", id: predecessorId || taskId },
+        { type: "Tasks", id: successorId || taskId }
+      ],
+    }),
+    updateTaskDependency: build.mutation<TaskDependency, { projectId: number, taskId: number, dependencyId: number, type?: string, isActive?: boolean, note?: string }>({
+      query: ({ projectId, taskId, dependencyId, ...body }) => ({
+        url: `projects/${projectId}/dependencies/tasks/${taskId}/${dependencyId}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result, error, { taskId }) => [{ type: "Tasks", id: taskId }],
+    }),
+    removeTaskDependency: build.mutation<void, { projectId: number, taskId: number, dependencyId: number }>({
+      query: ({ projectId, taskId, dependencyId }) => ({
+        url: `projects/${projectId}/dependencies/tasks/${taskId}/${dependencyId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { taskId }) => [{ type: "Tasks", id: taskId }],
     }),
     updateUser: build.mutation<User, Partial<User> & { cognitoId: string, teamIds?: number[], teamName?: string, roleName?: string }>({
       query: ({ cognitoId, ...body }) => ({
@@ -296,7 +271,7 @@ export const api = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: ["Teams", "Users", "AuthUser"],
+      invalidatesTags: TEAM_MUTATION_TAGS,
     }),
     addTeamMember: build.mutation<void, { teamId: number; userId: number; role?: string }>({
       query: ({ teamId, ...body }) => ({
@@ -304,17 +279,17 @@ export const api = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Teams", "Users", "AuthUser"],
+      invalidatesTags: TEAM_MUTATION_TAGS,
     }),
     removeTeamMember: build.mutation<void, { teamId: number; userId: number }>({
       query: ({ teamId, userId }) => ({
         url: `teams/${teamId}/members/${userId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Teams", "Users", "AuthUser"],
+      invalidatesTags: TEAM_MUTATION_TAGS,
     }),
-    search: build.query<SearchResults, { query: string; userId?: number }>({
-      query: ({ query, userId }) => `search?query=${query}${userId ? `&userId=${userId}` : ""}`,
+    search: build.query<SearchResults, { query: string }>({
+      query: ({ query }) => `search?query=${encodeURIComponent(query)}`,
     }),
     getActivities: build.query<Activity[], void>({
       query: () => "activities",
@@ -383,12 +358,153 @@ export const api = createApi({
       }),
       invalidatesTags: ["AuthUser", "Users"],
     }),
-    generateAIBreakdown: build.mutation<AIBreakdownSubtask[], { title: string; description?: string; projectId: number }>({
+    generateAIBreakdown: build.mutation<AIBreakdownSubtask[], { title: string; description?: string; projectId: number; minTasks?: number; maxTasks?: number }>({
       query: (body) => ({
         url: "ai/breakdown",
         method: "POST",
         body,
       }),
+    }),
+
+    /** Activity Collection Engine: normalized activity timeline for a project on a date */
+    getActivityTimeline: build.query<
+      ActivityTimelineResponseDTO,
+      { projectId: number; date?: string; from?: string; to?: string }
+    >({
+      query: ({ projectId, date, from, to }) => {
+        const params = new URLSearchParams();
+        if (date) params.set("date", date);
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        const qs = params.toString();
+        return `projects/${projectId}/activity-timeline${qs ? `?${qs}` : ""}`;
+      },
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+        { type: "Projects", id: projectId },
+      ],
+    }),
+
+    /** Daily Timeline Builder: structured and formatted daily timeline */
+    getDailyTimeline: build.query<
+      DailyTimelineResponseDTO,
+      { projectId: number; date?: string }
+    >({
+      query: ({ projectId, date }) => {
+        const qs = date ? `?date=${date}` : "";
+        return `projects/${projectId}/daily-timeline${qs}`;
+      },
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+        { type: "Projects", id: projectId },
+      ],
+    }),
+
+    /** Standup Analysis Engine: deterministic activity buckets (Yesterday, Today, Blockers, etc.) */
+    getStandupAnalysis: build.query<
+      StandupAnalysisResult,
+      { projectId: number; date?: string }
+    >({
+      query: ({ projectId, date }) => {
+        const qs = date ? `?date=${date}` : "";
+        return `projects/${projectId}/standup-analysis${qs}`;
+      },
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+        { type: "Projects", id: projectId },
+      ],
+    }),
+
+    /** Team Workload Analysis Engine: tasks per member, overloaded and idle members */
+    getTeamWorkload: build.query<
+      TeamWorkloadResult,
+      { projectId: number }
+    >({
+      query: ({ projectId }) => `projects/${projectId}/team-workload`,
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+        { type: "Users", id: "LIST" },
+      ],
+    }),
+
+    /** AI Standup Generator: generates structured standup using Gemini */
+    getTodayStandup: build.query<
+      AIStandupResponse & { id: number; date: string; generatedAt: string; isRegenerated: boolean; summary: any; aiRecommendations: any },
+      { projectId: number }
+    >({
+      query: ({ projectId }) => `projects/${projectId}/standup/today`,
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+        { type: "Projects", id: projectId },
+      ],
+    }),
+
+    /** Paginated standup history — lightweight cards (lazy-loads full record on click) */
+    getStandupHistory: build.query<
+      StandupHistoryResponse,
+      { projectId: number; page?: number; limit?: number; startDate?: string; endDate?: string; sprintId?: number }
+    >({
+      query: ({ projectId, page = 1, limit = 10, startDate, endDate, sprintId }) => {
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (startDate) params.append("startDate", startDate);
+        if (endDate)   params.append("endDate",   endDate);
+        if (sprintId)  params.append("sprintId",  String(sprintId));
+        return `projects/${projectId}/standup/history?${params.toString()}`;
+      },
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+      ],
+    }),
+
+    /** Fetch the full StandupReport for a specific date (lazy-loads on card click) */
+    getStandupByDate: build.query<
+      AIStandupResponse & StandupHistoryItem,
+      { projectId: number; date: string }
+    >({
+      query: ({ projectId, date }) => `projects/${projectId}/standup/date/${date}`,
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+      ],
+    }),
+
+    /** Run the StandupComparisonEngine over any two dates */
+    compareStandups: build.query<
+      StandupCompareResponse,
+      { projectId: number; dateA: string; dateB: string }
+    >({
+      query: ({ projectId, dateA, dateB }) =>
+        `projects/${projectId}/standup/compare?dateA=${dateA}&dateB=${dateB}`,
+      providesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+      ],
+    }),
+
+    generateStandup: build.mutation<
+      AIStandupResponse,
+      { projectId: number; date?: string; filters?: AnalysisFilters }
+    >({
+      query: ({ projectId, date, filters }) => ({
+        url: `projects/${projectId}/standup`,
+        method: "POST",
+        body: { date, filters },
+      }),
+      invalidatesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+      ],
+    }),
+
+    regenerateStandup: build.mutation<
+      AIStandupResponse,
+      { projectId: number; date?: string; filters?: AnalysisFilters }
+    >({
+      query: ({ projectId, date, filters }) => ({
+        url: `projects/${projectId}/standup/regenerate`,
+        method: "POST",
+        body: { date, filters },
+      }),
+      invalidatesTags: (_result, _err, { projectId }) => [
+        { type: "Tasks", id: projectId },
+      ],
     }),
   }),
 });
@@ -396,12 +512,20 @@ export const api = createApi({
 export const {
   useGetProjectsQuery,
   useGetProjectByIdQuery,
+  useGetProjectHealthQuery,
+  useGetProjectDependenciesPredictionQuery,
+  useGetProjectDependencyGraphQuery,
+  useGetAffectedDownstreamTasksQuery,
   useCreateProjectMutation,
   useDeleteProjectMutation,
   useGetTasksQuery,
   useCreateTaskMutation,
   useUpdateTaskStatusMutation,
   useUpdateTaskMutation,
+  useGetTaskDependenciesQuery,
+  useAddTaskDependencyMutation,
+  useUpdateTaskDependencyMutation,
+  useRemoveTaskDependencyMutation,
   useSearchQuery,
   useGetUsersQuery,
   useGetTeamsQuery,
@@ -419,4 +543,14 @@ export const {
   useGenerateAIBreakdownMutation,
   useAddTeamMemberMutation,
   useRemoveTeamMemberMutation,
+  useGetActivityTimelineQuery,
+  useGetDailyTimelineQuery,
+  useGetStandupAnalysisQuery,
+  useGetTeamWorkloadQuery,
+  useGetTodayStandupQuery,
+  useGetStandupHistoryQuery,
+  useGetStandupByDateQuery,
+  useCompareStandupsQuery,
+  useGenerateStandupMutation,
+  useRegenerateStandupMutation,
 } = api;

@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, DragEvent } from "react";
 import { useS3Upload, UploadTypeKey, ConfirmedUpload } from "@/hooks/useS3Upload";
-import { Upload, File, CheckCircle, XCircle, X } from "lucide-react";
+import { Upload, CheckCircle, XCircle, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types

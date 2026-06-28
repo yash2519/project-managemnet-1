@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useGetAuthUserQuery } from "@/state/api";
+
 
 // ---------------------------------------------------------------------------
 // Types

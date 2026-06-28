@@ -7,7 +7,13 @@ const nextConfig = {
         hostname: "pm-s3-images.s3.us-east-1.amazonaws.com",
         port: "",
         pathname: "/**",
-      }
+      },
+      {
+        protocol: "https",
+        hostname: "ui-avatars.com",
+        port: "",
+        pathname: "/api/**",
+      },
     ]
   }
 };

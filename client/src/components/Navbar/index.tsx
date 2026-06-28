@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, Moon, Search, Settings, Sun, User } from "lucide-react";
+import { Menu, Moon, Search, Sun, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/app/redux";

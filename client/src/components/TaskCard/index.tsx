@@ -2,7 +2,8 @@ import { Task } from "@/state/api";
 import Image from "next/image";
 import React, { useState } from "react";
 import { formatDate } from "@/lib/utils";
-import { EllipsisVertical, MessageSquareMore } from "lucide-react";
+import { EllipsisVertical, MessageSquareMore, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   task: Task;
@@ -10,6 +11,7 @@ type Props = {
 
 const TaskCard = ({ task }: Props) => {
   const [showAssignees, setShowAssignees] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const taskTagsSplit = task.tags ? task.tags.split(",") : [];
 
@@ -35,17 +37,40 @@ const TaskCard = ({ task }: Props) => {
     </div>
   );
 
+  const searchParams = useSearchParams();
+  const highlightedTaskId = searchParams.get("taskId");
+  const isHighlighted = highlightedTaskId === String(task.id);
+
   return (
-    <div className="mb-3 rounded bg-white shadow dark:bg-dark-secondary dark:text-white">
-      {task.attachments && task.attachments.length > 0 && (
-        <Image
-          src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.attachments[0].fileURL}`}
-          alt={task.attachments[0].fileName}
-          width={400}
-          height={200}
-          className="h-auto w-full rounded-t-md"
-        />
+    <>
+      {/* Attachment Lightbox Modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewUrl(null)}
+              className="absolute -top-10 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+              aria-label="Close preview"
+            >
+              <X size={18} />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="Attachment preview"
+              className="max-w-[90vw] max-h-[90vh] rounded-xl object-contain shadow-2xl"
+            />
+          </div>
+        </div>
       )}
+
+      <div className={`mb-3 rounded bg-white shadow dark:bg-dark-secondary dark:text-white ${isHighlighted ? "ring-2 ring-blue-500" : ""}`}>
       <div className="p-4 md:p-6">
         <div className="flex items-start justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-2">
@@ -83,40 +108,88 @@ const TaskCard = ({ task }: Props) => {
         <p className="text-sm text-gray-600 dark:text-neutral-400 mt-2">
           {task.description}
         </p>
+
+        {task.attachments && task.attachments.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {task.attachments.map((attachment) => {
+              const url = `https://pm-s3-images.s3.us-east-1.amazonaws.com/${attachment.fileURL}`;
+              return (
+                <div
+                  key={attachment.id}
+                  className="group relative cursor-pointer"
+                  title={attachment.fileName}
+                  onClick={() => setPreviewUrl(url)}
+                >
+                  <Image
+                    src={url}
+                    alt={attachment.fileName}
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 rounded-md object-cover border border-gray-200 dark:border-gray-700 transition-all group-hover:ring-2 group-hover:ring-blue-400 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 rounded-md bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="mt-4 border-t border-gray-200 dark:border-stroke-dark" />
 
         {/* Users */}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex -space-x-[6px] overflow-hidden">
             {task.assignee && (
-              <Image
-                key={task.assignee.userId}
-                src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.assignee.profilePictureUrl!}`}
-                alt={task.assignee.username}
-                width={30}
-                height={30}
-                className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
-                onError={(e) => {
-                  if (e.currentTarget.src.includes("ui-avatars.com")) return;
-                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.assignee?.username}`;
-                  e.currentTarget.srcset = "";
-                }}
-              />
+              task.assignee.profilePictureUrl ? (
+                <Image
+                  key={task.assignee.userId}
+                  src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.assignee.profilePictureUrl}`}
+                  alt={task.assignee.username}
+                  width={30}
+                  height={30}
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                  onError={(e) => {
+                    if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.assignee?.username}`;
+                    e.currentTarget.srcset = "";
+                  }}
+                />
+              ) : (
+                <Image
+                  key={task.assignee.userId}
+                  src={`https://ui-avatars.com/api/?name=${task.assignee.username}&background=random`}
+                  alt={task.assignee.username}
+                  width={30}
+                  height={30}
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                />
+              )
             )}
             {task.author && (
-              <Image
-                key={task.author.userId}
-                src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.author.profilePictureUrl!}`}
-                alt={task.author.username}
-                width={30}
-                height={30}
-                className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
-                onError={(e) => {
-                  if (e.currentTarget.src.includes("ui-avatars.com")) return;
-                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.author?.username}`;
-                  e.currentTarget.srcset = "";
-                }}
-              />
+              task.author.profilePictureUrl ? (
+                <Image
+                  key={task.author.userId}
+                  src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.author.profilePictureUrl}`}
+                  alt={task.author.username}
+                  width={30}
+                  height={30}
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                  onError={(e) => {
+                    if (e.currentTarget.src.includes("ui-avatars.com")) return;
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${task.author?.username}`;
+                    e.currentTarget.srcset = "";
+                  }}
+                />
+              ) : (
+                <Image
+                  key={task.author.userId}
+                  src={`https://ui-avatars.com/api/?name=${task.author.username}&background=random`}
+                  alt={task.author.username}
+                  width={30}
+                  height={30}
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
+                />
+              )
             )}
           </div>
           
@@ -142,7 +215,11 @@ const TaskCard = ({ task }: Props) => {
               {task.assignee && (
                 <div className="flex items-center gap-2">
                   <Image
-                    src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.assignee.profilePictureUrl!}`}
+                    src={
+                      task.assignee.profilePictureUrl
+                        ? `https://pm-s3-images.s3.us-east-1.amazonaws.com/${task.assignee.profilePictureUrl}`
+                        : `https://ui-avatars.com/api/?name=${task.assignee.username}&background=random`
+                    }
                     alt={task.assignee.username}
                     width={24}
                     height={24}
@@ -159,7 +236,11 @@ const TaskCard = ({ task }: Props) => {
               {task.taskAssignments?.map((ta) => ta.user.userId !== task.assignee?.userId && (
                 <div key={ta.user.userId} className="flex items-center gap-2">
                   <Image
-                    src={`https://pm-s3-images.s3.us-east-1.amazonaws.com/${ta.user.profilePictureUrl!}`}
+                    src={
+                      ta.user.profilePictureUrl
+                        ? `https://pm-s3-images.s3.us-east-1.amazonaws.com/${ta.user.profilePictureUrl}`
+                        : `https://ui-avatars.com/api/?name=${ta.user.username}&background=random`
+                    }
                     alt={ta.user.username}
                     width={24}
                     height={24}
@@ -180,7 +261,8 @@ const TaskCard = ({ task }: Props) => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

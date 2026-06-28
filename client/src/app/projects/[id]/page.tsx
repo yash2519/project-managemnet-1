@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import ProjectHeader from "@/app/projects/ProjectHeader";
 import Board from "../BoardView";
 import List from "../ListView";
 import Timeline from "../TimelineView";
 import Table from "../TableView";
+import AnalyticsView from "../AnalyticsView";
+import ProjectAIOverview from "../ProjectAIOverview";
 import ModalNewTask from "@/components/ModalNewTask";
 import {
   useGetProjectByIdQuery,
@@ -27,13 +30,21 @@ type Props = {
   params: { id: string };
 };
 
-const Project = ({ params }: Props) => {
+const ProjectContent = ({ params }: Props) => {
   const { id } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("Board");
   const [isModalNewTaskOpen, setIsModalNewTaskOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // If navigated from a search result with a taskId, default to Board tab
+  useEffect(() => {
+    if (searchParams.get("taskId")) {
+      setActiveTab("Board");
+    }
+  }, [searchParams]);
 
   const { data: project, isLoading: projectLoading } = useGetProjectByIdQuery(
     Number(id)
@@ -207,6 +218,14 @@ const Project = ({ params }: Props) => {
         </div>
       )}
 
+      {/* AI Overview Panel */}
+      {!projectLoading && project && (
+        <ProjectAIOverview 
+          projectId={Number(id)} 
+          onViewAnalytics={() => setActiveTab("Analytics")} 
+        />
+      )}
+
       {activeTab === "Board" && (
         <Board id={id} setIsModalNewTaskOpen={setIsModalNewTaskOpen} searchTerm={searchTerm} />
       )}
@@ -219,9 +238,17 @@ const Project = ({ params }: Props) => {
       {activeTab === "Table" && (
         <Table id={id} setIsModalNewTaskOpen={setIsModalNewTaskOpen} searchTerm={searchTerm} />
       )}
+      {activeTab === "Analytics" && (
+        <AnalyticsView id={id} />
+      )}
     </div>
   );
 };
 
-export default Project;
+const Project = ({ params }: Props) => (
+  <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500" /></div>}>
+    <ProjectContent params={params} />
+  </Suspense>
+);
 
+export default Project;

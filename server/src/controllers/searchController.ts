@@ -1,64 +1,94 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 const prisma = new PrismaClient();
 
-export const search = async (req: Request, res: Response): Promise<void> => {
-  const { query, userId } = req.query;
+export const search = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { query } = req.query;
   try {
-    const taskWhereClause: any = {
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthenticated" });
+      return;
+    }
+
+    const q = (query as string || "").trim();
+    if (!q) {
+      res.json({ tasks: [], projects: [], users: [] });
+      return;
+    }
+
+    const isAdmin = req.user.role === "ADMIN";
+    const userId = req.user.userId;
+    const teamIds = req.user.teamIds || [];
+
+    // --- 1. Fetch Tasks ---
+    const taskWhere: any = {
       OR: [
-        { title: { contains: query as string } },
-        { description: { contains: query as string } },
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
       ],
     };
 
-    if (userId) {
-      taskWhereClause.AND = [
+    if (!isAdmin) {
+      taskWhere.AND = [
         {
           OR: [
-            { authorUserId: Number(userId) },
-            { assignedUserId: Number(userId) },
+            { authorUserId: userId },
+            { assignedUserId: userId },
+            { project: { ownerId: userId } },
+            { project: { teamId: { in: teamIds } } },
+            { project: { tasks: { some: { assignedUserId: userId } } } },
           ],
         },
       ];
     }
 
     const tasks = await prisma.task.findMany({
-      where: taskWhereClause,
+      where: taskWhere,
+      include: {
+        author: true,
+        assignee: true,
+        project: true, // Required for UI
+      },
     });
 
-    const projectWhereClause: any = {
+    // --- 2. Fetch Projects ---
+    const projectWhere: any = {
       OR: [
-        { name: { contains: query as string } },
-        { description: { contains: query as string } },
+        { name: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
       ],
     };
 
-    if (userId) {
-      projectWhereClause.tasks = {
-        some: {
+    if (!isAdmin) {
+      projectWhere.AND = [
+        {
           OR: [
-            { authorUserId: Number(userId) },
-            { assignedUserId: Number(userId) },
+            { ownerId: userId },
+            { teamId: { in: teamIds } },
+            { tasks: { some: { assignedUserId: userId } } },
           ],
         },
-      };
+      ];
     }
 
     const projects = await prisma.project.findMany({
-      where: projectWhereClause,
+      where: projectWhere,
     });
 
+    // --- 3. Fetch Users ---
+    // Users are globally searchable
     const users = await prisma.user.findMany({
       where: {
-        OR: [{ username: { contains: query as string } }],
+        OR: [
+          { username: { contains: q, mode: "insensitive" } },
+        ],
       },
     });
+
     res.json({ tasks, projects, users });
   } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error performing search: ${error.message}` });
+    res.status(500).json({ message: `Error performing search: ${error.message}` });
   }
 };

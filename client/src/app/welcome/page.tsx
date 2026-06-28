@@ -3,7 +3,6 @@
 import React from "react";
 import {
   Users,
-  PlusSquare,
   Layout,
   CheckCircle2,
   ArrowRight

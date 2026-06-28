@@ -1,5 +1,5 @@
 import React from "react";
-import ReusablePriorityPage from "../reusablePriorityPage";
+import ReusablePriorityPage from "../ReusablePriorityPage";
 import { Priority } from "@/state/api";
 
 const Urgent = () => {

@@ -11,12 +11,18 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     (state) => state.global.isSidebarCollapsed,
   );
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+  const isCompactMode = useAppSelector((state) => state.global.isCompactMode);
 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
+    }
+    if (isCompactMode) {
+      document.documentElement.classList.add("compact");
+    } else {
+      document.documentElement.classList.remove("compact");
     }
   });
 

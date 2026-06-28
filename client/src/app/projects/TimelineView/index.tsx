@@ -1,5 +1,5 @@
 import { useAppSelector } from "@/app/redux";
-import { useGetAuthUserQuery, useGetTasksQuery } from "@/state/api";
+import { useGetTasksQuery } from "@/state/api";
 import { DisplayOption, Gantt, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import React, { useMemo, useState } from "react";
@@ -52,7 +52,7 @@ const Timeline = ({ id, setIsModalNewTaskOpen, searchTerm = "" }: Props) => {
         };
       }) || []
     );
-  }, [tasks, searchTerm, displayOptions.viewMode]);
+  }, [tasks, searchTerm]);
 
   const handleViewModeChange = (
     event: React.ChangeEvent<HTMLSelectElement>,

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze:circular": "madge --circular --extensions ts,tsx src/"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.15.2",
@@ -15,8 +16,10 @@
     "@mui/material": "^5.16.6",
     "@mui/x-data-grid": "^7.12.0",
     "@reduxjs/toolkit": "^2.2.7",
+    "@xyflow/react": "^12.11.1",
     "aws-amplify": "^6.16.3",
     "axios": "^1.7.3",
+    "dagre": "^0.8.5",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "gantt-task-react": "^0.3.9",
@@ -34,6 +37,7 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
+    "@types/dagre": "^0.7.54",
     "@types/lodash": "^4.17.7",
     "@types/node": "^20.14.14",
     "@types/numeral": "^2.0.5",
@@ -42,6 +46,7 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
+    "madge": "^8.0.0",
     "postcss": "^8",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.5",

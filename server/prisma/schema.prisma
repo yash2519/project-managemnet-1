@@ -21,27 +21,35 @@ enum UploadType {
   GENERAL
 }
 
+enum DependencyType {
+  DEPENDS_ON
+  BLOCKED_BY
+  RELATED_TO
+}
+
 model User {
-  userId            Int              @id @default(autoincrement())
-  cognitoId         String           @unique
-  username          String           @unique
-  profilePictureUrl String?
-  teamId            Int?
-  teamName          String?
-  roleName          String?
-  attachments       Attachment[]
-  comments          Comment[]
-  assignedTasks     Task[]           @relation("TaskAssignee")
-  authoredTasks     Task[]           @relation("TaskAuthor")
-  taskAssignments   TaskAssignment[]
-  Team              Team?            @relation(fields: [teamId], references: [id])
-  teams             UserTeam[]
-  ownedProjects     Project[]        @relation("ProjectOwner")
-  role              Role             @default(MEMBER)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  activities        Activity[]
-  fileUploads       FileUpload[]     @relation("UserFileUploads")
+  userId              Int              @id @default(autoincrement())
+  cognitoId           String           @unique
+  username            String           @unique
+  profilePictureUrl   String?
+  teamId              Int?
+  teamName            String?
+  roleName            String?
+  attachments         Attachment[]
+  comments            Comment[]
+  assignedTasks       Task[]           @relation("TaskAssignee")
+  authoredTasks       Task[]           @relation("TaskAuthor")
+  taskAssignments     TaskAssignment[]
+  Team                Team?            @relation(fields: [teamId], references: [id])
+  teams               UserTeam[]
+  ownedProjects       Project[]        @relation("ProjectOwner")
+  role                Role             @default(MEMBER)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @default(now()) @updatedAt
+  activities          Activity[]
+  fileUploads         FileUpload[]     @relation("UserFileUploads")
+  createdDependencies TaskDependency[] @relation("DependencyCreator")
+  standupReports      StandupReport[]  @relation("StandupGenerator")
 }
 
 model Team {
@@ -60,38 +68,40 @@ model Team {
 }
 
 model UserTeam {
-  id      Int   @id @default(autoincrement())
-  userId  Int
-  teamId  Int
-  role    Role @default(MEMBER)
-  user    User @relation(fields: [userId], references: [userId])
-  team    Team @relation(fields: [teamId], references: [id])
+  id     Int  @id @default(autoincrement())
+  userId Int
+  teamId Int
+  role   Role @default(MEMBER)
+  user   User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
   @@unique([userId, teamId])
 }
 
 model Project {
-  id           Int           @id @default(autoincrement())
-  name         String
-  description  String?
-  startDate    DateTime?
-  endDate      DateTime?
-  projectTeams ProjectTeam[]
-  tasks        Task[]
-  ownerId      Int
-  teamId       Int?
-  owner        User   @relation("ProjectOwner", fields: [ownerId], references: [userId])
-  team         Team?  @relation(fields: [teamId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  activities   Activity[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  description    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  projectTeams   ProjectTeam[]
+  tasks          Task[]
+  ownerId        Int
+  teamId         Int?
+  owner          User            @relation("ProjectOwner", fields: [ownerId], references: [userId])
+  team           Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+  activities     Activity[]
+  standupReports StandupReport[]
 }
 
 model ProjectTeam {
   id        Int     @id @default(autoincrement())
   teamId    Int
   projectId Int
-  project   Project @relation(fields: [projectId], references: [id])
-  team      Team    @relation(fields: [teamId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model Task {
@@ -109,21 +119,23 @@ model Task {
   assignedUserId  Int?
   attachments     Attachment[]
   comments        Comment[]
-  assignee        User?            @relation("TaskAssignee", fields: [assignedUserId], references: [userId])
+  assignee        User?            @relation("TaskAssignee", fields: [assignedUserId], references: [userId], onDelete: SetNull)
   author          User             @relation("TaskAuthor", fields: [authorUserId], references: [userId])
-  project         Project          @relation(fields: [projectId], references: [id])
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   taskAssignments TaskAssignment[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   activities      Activity[]
+  predecessors    TaskDependency[] @relation("Predecessor")
+  successors      TaskDependency[] @relation("Successor")
 }
 
 model TaskAssignment {
   id     Int  @id @default(autoincrement())
   userId Int
   taskId Int
-  task   Task @relation(fields: [taskId], references: [id])
-  user   User @relation(fields: [userId], references: [userId])
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
 model Attachment {
@@ -132,7 +144,7 @@ model Attachment {
   fileName     String?
   taskId       Int
   uploadedById Int
-  task         Task    @relation(fields: [taskId], references: [id])
+  task         Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   uploadedBy   User    @relation(fields: [uploadedById], references: [userId])
 }
 
@@ -141,7 +153,7 @@ model Comment {
   text   String
   taskId Int
   userId Int
-  task   Task   @relation(fields: [taskId], references: [id])
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [userId])
 }
 
@@ -150,14 +162,14 @@ model Activity {
   userId    Int?
   projectId Int?
   taskId    Int?
-  action    String   
-  entity    String   
-  details   String?  
+  action    String
+  entity    String
+  details   String?
   createdAt DateTime @default(now())
-  
-  user      User?    @relation(fields: [userId], references: [userId])
-  project   Project? @relation(fields: [projectId], references: [id])
-  task      Task?    @relation(fields: [taskId], references: [id])
+
+  user    User?    @relation(fields: [userId], references: [userId])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 model FileUpload {
@@ -172,5 +184,52 @@ model FileUpload {
   uploadedById Int
   createdAt    DateTime   @default(now())
 
-  uploadedBy   User       @relation("UserFileUploads", fields: [uploadedById], references: [userId])
+  uploadedBy User @relation("UserFileUploads", fields: [uploadedById], references: [userId])
+}
+
+model TaskDependency {
+  id              Int            @id @default(autoincrement())
+  predecessorId   Int
+  successorId     Int
+  type            DependencyType @default(DEPENDS_ON)
+  isActive        Boolean        @default(true)
+  note            String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdByUserId Int
+
+  predecessor Task @relation("Predecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor   Task @relation("Successor", fields: [successorId], references: [id], onDelete: Cascade)
+  createdBy   User @relation("DependencyCreator", fields: [createdByUserId], references: [userId], onDelete: Restrict)
+
+  @@unique([predecessorId, successorId, type])
+  @@index([successorId])
+  @@index([predecessorId])
+  @@index([predecessorId, type])
+  @@index([createdByUserId])
+}
+
+model StandupReport {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  date      DateTime // Logical date of the standup
+
+  // Structured Output
+  summary           Json // Yesterday, Today, Blockers, TeamSummary
+  generatedStandup  String // Combined or core narrative text
+  aiRecommendations Json // Array of recommendations
+  analysisContext   Json // The raw data fed into the AI
+
+  // Metadata
+  generatedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  generatedBy       Int // userId
+  generationVersion String   @default("1.0")
+  isRegenerated     Boolean  @default(false)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation("StandupGenerator", fields: [generatedBy], references: [userId])
+
+  @@unique([projectId, date])
+  @@index([projectId, date])
 }

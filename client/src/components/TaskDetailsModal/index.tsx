@@ -3,6 +3,7 @@ import { Task } from "@/state/api";
 import { formatDate } from "@/lib/utils";
 import Image from "next/image";
 import React from "react";
+import DependencySection from "./DependencySection";
 
 type Props = {
   isOpen: boolean;
@@ -119,6 +120,9 @@ const TaskDetailsModal = ({ isOpen, onClose, task }: Props) => {
             )}
           </div>
         </div>
+
+        {/* Dependencies */}
+        <DependencySection task={task} />
 
         {/* Attachments */}
         <div>

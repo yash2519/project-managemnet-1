@@ -1,10 +1,14 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { AuthenticatedRequest } from "../middleware/auth";
 
 const prisma = new PrismaClient();
 
-export const getUsers = async (req: Request, res: Response): Promise<void> => {
+export const getUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthenticated" });
+    return;
+  }
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -42,7 +46,7 @@ export const getUserMe = async (req: AuthenticatedRequest, res: Response): Promi
   }
 };
 
-export const getUser = async (req: Request, res: Response): Promise<void> => {
+export const getUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { cognitoId } = req.params;
   try {
     const user = await prisma.user.findUnique({
@@ -59,7 +63,7 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const postUser = async (req: Request, res: Response): Promise<void> => {
+export const postUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { username, cognitoId, profilePictureUrl = "i1.jpg", teamId } = req.body;
     const newUser = await prisma.user.create({
@@ -71,9 +75,10 @@ export const postUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
+export const updateUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { cognitoId } = req.params;
-  let { username, roleName } = req.body;
+  const { username } = req.body;
+  let { roleName } = req.body;
 
   const validateCustomField = (value: string | undefined): string | undefined => {
     if (!value) return value;
@@ -118,7 +123,7 @@ export const updateProfilePicture = async (
     return;
   }
 
-  const { s3Key, publicUrl } = req.body;
+  const { s3Key } = req.body;
 
   if (!s3Key) {
     res.status(400).json({ message: "s3Key is required" });

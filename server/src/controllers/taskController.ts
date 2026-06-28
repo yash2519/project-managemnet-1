@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const getTasks = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  const { projectId, userId } = req.query;
+  const { projectId } = req.query;
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Unauthenticated' });
@@ -99,14 +99,7 @@ export const updateTaskStatus = async (req: AuthenticatedRequest, res: Response)
       res.status(401).json({ message: "Unauthenticated" });
       return;
     }
-    const task = await prisma.task.findUnique({
-      where: { id: Number(taskId) },
-      include: { project: true }
-    });
-    if (!task) {
-      res.status(404).json({ message: "Task not found" });
-      return;
-    }
+    const task = res.locals.task!;
     
     const isOwner = task.project.ownerId === req.user.userId;
     const isAssigned = task.assignedUserId === req.user.userId;
@@ -146,14 +139,7 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
       res.status(401).json({ message: "Unauthenticated" });
       return;
     }
-    const task = await prisma.task.findUnique({
-      where: { id: Number(taskId) },
-      include: { project: true }
-    });
-    if (!task) {
-      res.status(404).json({ message: "Task not found" });
-      return;
-    }
+    const task = res.locals.task!;
 
     const isOwner = task.project.ownerId === req.user.userId;
     const isAdmin = req.user.role === "ADMIN";
@@ -178,16 +164,75 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
       },
     });
 
-    await prisma.activity.create({
-      data: {
-        userId: req.user.userId,
-        projectId: task.projectId,
-        taskId: task.id,
-        action: "UPDATED",
-        entity: "Task",
-        details: `Task ${task.title} was updated`,
-      }
-    });
+    // Emit specific activity events for each field that changed
+    const activityPromises: Promise<any>[] = [];
+    const baseActivity = {
+      userId: req.user.userId,
+      projectId: task.projectId,
+      taskId: task.id,
+      entity: "Task",
+    };
+
+    if (status !== undefined && status !== task.status) {
+      const isCompleted = status === "Completed";
+      const isReopened = task.status === "Completed" && status !== "Completed";
+      activityPromises.push(
+        prisma.activity.create({
+          data: {
+            ...baseActivity,
+            action: "UPDATED",
+            details: isCompleted
+              ? `Task status changed to Completed`
+              : isReopened
+              ? `Task status changed to ${status} (reopened)`
+              : `Task status changed to ${status}`,
+          },
+        })
+      );
+    }
+
+    if (priority !== undefined && priority !== task.priority) {
+      activityPromises.push(
+        prisma.activity.create({
+          data: {
+            ...baseActivity,
+            action: "UPDATED",
+            details: `Task priority changed to ${priority}`,
+          },
+        })
+      );
+    }
+
+    if (
+      assignedUserId !== undefined &&
+      Number(assignedUserId || 0) !== (task.assignedUserId || 0)
+    ) {
+      activityPromises.push(
+        prisma.activity.create({
+          data: {
+            ...baseActivity,
+            action: "UPDATED",
+            details: assignedUserId
+              ? `Task assigned to user ${assignedUserId}`
+              : `Task unassigned`,
+          },
+        })
+      );
+    }
+
+    if (activityPromises.length === 0) {
+      activityPromises.push(
+        prisma.activity.create({
+          data: {
+            ...baseActivity,
+            action: "UPDATED",
+            details: `Task ${task.title} was updated`,
+          },
+        })
+      );
+    }
+
+    await Promise.all(activityPromises);
 
     res.json(updatedTask);
   } catch (error: any) {
@@ -198,6 +243,15 @@ export const updateTask = async (req: AuthenticatedRequest, res: Response): Prom
 export const getUserTasks = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { userId } = req.params;
   try {
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthenticated" });
+      return;
+    }
+    // Only allow admins or the user themselves to fetch their own tasks
+    if (req.user.role !== "ADMIN" && req.user.userId !== Number(userId)) {
+      res.status(403).json({ message: "Forbidden: cannot view another user's tasks" });
+      return;
+    }
     const tasks = await prisma.task.findMany({
       where: { assignedUserId: Number(userId) },
       include: {

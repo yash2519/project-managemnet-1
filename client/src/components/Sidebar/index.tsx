@@ -13,7 +13,6 @@ import {
   ChevronUp,
   Home,
   Layers3,
-  LockIcon,
   LucideIcon,
   Search,
   Settings,

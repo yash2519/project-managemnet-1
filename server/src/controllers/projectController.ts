@@ -4,6 +4,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const requireProjectOwnerOrAdmin = (project: { ownerId: number }, user: { userId: number, role: string }, res: Response): boolean => {
+  if (project.ownerId !== user.userId && user.role !== "ADMIN") {
+    res.status(403).json({ message: "Forbidden: insufficient permissions" });
+    return false;
+  }
+  return true;
+};
+
 // Get all projects visible to the user (owner or team member)
 export const getProjects = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   if (!req.user) {
@@ -124,17 +132,8 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
   const { projectId } = req.params;
   const { name, description, startDate, endDate, teamId } = req.body;
   try {
-    const project = await prisma.project.findUnique({ where: { id: Number(projectId) } });
-    if (!project) {
-      res.status(404).json({ message: "Project not found" });
-      return;
-    }
-    const isOwner = project.ownerId === req.user.userId;
-    
-    if (!isOwner && req.user.role !== "ADMIN") {
-      res.status(403).json({ message: "Forbidden: insufficient permissions" });
-      return;
-    }
+    const project = res.locals.project!;
+    if (!requireProjectOwnerOrAdmin(project, req.user, res)) return;
     const updated = await prisma.project.update({
       where: { id: Number(projectId) },
       data: {
@@ -160,58 +159,12 @@ export const deleteProject = async (req: AuthenticatedRequest, res: Response): P
   const { projectId } = req.params;
   const pId = Number(projectId);
   try {
-    const project = await prisma.project.findUnique({ where: { id: pId } });
-    if (!project) {
-      res.status(404).json({ message: "Project not found" });
-      return;
-    }
-    const isOwner = project.ownerId === req.user.userId;
-    
-    if (!isOwner && req.user.role !== "ADMIN") {
-      res.status(403).json({ message: "Forbidden: insufficient permissions" });
-      return;
-    }
+    const project = res.locals.project!;
+    if (!requireProjectOwnerOrAdmin(project, req.user, res)) return;
 
-    // Cascade delete project dependencies inside a transaction
-    await prisma.$transaction(async (tx) => {
-      // Find all tasks related to the project
-      const tasks = await tx.task.findMany({
-        where: { projectId: pId },
-        select: { id: true },
-      });
-      const taskIds = tasks.map((t) => t.id);
-
-      if (taskIds.length > 0) {
-        // Delete all comments belonging to tasks in the project
-        await tx.comment.deleteMany({
-          where: { taskId: { in: taskIds } },
-        });
-
-        // Delete all attachments belonging to tasks in the project
-        await tx.attachment.deleteMany({
-          where: { taskId: { in: taskIds } },
-        });
-
-        // Delete all task assignments belonging to tasks in the project
-        await tx.taskAssignment.deleteMany({
-          where: { taskId: { in: taskIds } },
-        });
-
-        // Delete the tasks themselves
-        await tx.task.deleteMany({
-          where: { projectId: pId },
-        });
-      }
-
-      // Delete all project team assignments
-      await tx.projectTeam.deleteMany({
-        where: { projectId: pId },
-      });
-
-      // Finally delete the project itself
-      await tx.project.delete({
-        where: { id: pId },
-      });
+    // Database natively cascades deletion of tasks, comments, attachments, assignments, and activities
+    await prisma.project.delete({
+      where: { id: pId },
     });
 
     res.json({ message: "Project and all associated tasks/data deleted successfully" });

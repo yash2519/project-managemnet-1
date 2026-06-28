@@ -4,6 +4,17 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const requireTeamAdmin = async (teamId: number | string, userId: number, res: Response): Promise<boolean> => {
+  const isAdmin = await prisma.userTeam.findFirst({
+    where: { teamId: Number(teamId), userId, role: "ADMIN" }
+  });
+  if (!isAdmin) {
+    res.status(403).json({ message: "Only the Team Admin can perform this action" });
+    return false;
+  }
+  return true;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Create a new team — creator is auto-added as a member
 // Body: { teamName, teamLeadUserId?, memberUserIds?: number[] }
@@ -165,19 +176,9 @@ export const updateTeam = async (req: AuthenticatedRequest, res: Response): Prom
   const { teamName, teamLeadUserId, memberUserIds } = req.body;
 
   try {
-    const isAdmin = await prisma.userTeam.findFirst({
-      where: { teamId: Number(teamId), userId: req.user.userId, role: "ADMIN" }
-    });
-    if (!isAdmin) {
-      res.status(403).json({ message: "Only the Team Admin can perform this action" });
-      return;
-    }
+    if (!(await requireTeamAdmin(teamId, req.user.userId, res))) return;
 
-    const team = await prisma.team.findUnique({ where: { id: Number(teamId) } });
-    if (!team) {
-      res.status(404).json({ message: "Team not found" });
-      return;
-    }
+    const team = res.locals.team!;
 
     // Update scalar fields
     const updated = await prisma.team.update({
@@ -225,13 +226,7 @@ export const addTeamMember = async (req: AuthenticatedRequest, res: Response): P
   const { teamId } = req.params;
   const { userId, role = "MEMBER" } = req.body;
   try {
-    const isAdmin = await prisma.userTeam.findFirst({
-      where: { teamId: Number(teamId), userId: req.user.userId, role: "ADMIN" }
-    });
-    if (!isAdmin) {
-      res.status(403).json({ message: "Only the Team Admin can perform this action" });
-      return;
-    }
+    if (!(await requireTeamAdmin(teamId, req.user.userId, res))) return;
 
     const existing = await prisma.userTeam.findFirst({
       where: { userId: Number(userId), teamId: Number(teamId) },
@@ -279,13 +274,7 @@ export const removeTeamMember = async (req: AuthenticatedRequest, res: Response)
   }
   const { teamId, userId } = req.params;
   try {
-    const isAdmin = await prisma.userTeam.findFirst({
-      where: { teamId: Number(teamId), userId: req.user.userId, role: "ADMIN" }
-    });
-    if (!isAdmin) {
-      res.status(403).json({ message: "Only the Team Admin can perform this action" });
-      return;
-    }
+    if (!(await requireTeamAdmin(teamId, req.user.userId, res))) return;
 
     await prisma.userTeam.deleteMany({
       where: { userId: Number(userId), teamId: Number(teamId) },
